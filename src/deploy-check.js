@@ -28,13 +28,13 @@ const checks = [
     fix: 'Componente MeuBentinLogo.tsx não encontrado!'
   },
   {
-    name: 'App.tsx importa logo corretamente',
+    name: 'App.tsx existe e está válido',
     check: () => {
       if (!fs.existsSync('./App.tsx')) return false;
       const content = fs.readFileSync('./App.tsx', 'utf8');
-      return content.includes("import MeuBentinLogo from './components/MeuBentinLogo'");
+      return content.includes("export default function App");
     },
-    fix: 'App.tsx não está importando MeuBentinLogo corretamente!'
+    fix: 'App.tsx não encontrado ou inválido!'
   },
   {
     name: 'Vercel.json configurado',
@@ -118,14 +118,14 @@ if (fs.existsSync('./package.json')) {
   }
 }
 
-// Verificar se não há importações problemáticas nos arquivos
+// Verificar se não há importações problemáticas nos arquivos frontend
 const problematicImports = [];
 const filesToCheck = ['./App.tsx', './components/MeuBentinLogo.tsx'];
 
 filesToCheck.forEach(file => {
   if (fs.existsSync(file)) {
     const content = fs.readFileSync(file, 'utf8');
-    if (content.includes('figma:asset') || content.includes('jsr:')) {
+    if (content.includes('figma:asset') || content.includes('jsr:') || content.includes('npm:')) {
       problematicImports.push(file);
     }
   }
@@ -139,6 +139,22 @@ if (problematicImports.length > 0) {
   allPassed = false;
 } else {
   console.log(`${GREEN}✅ Nenhuma importação problemática encontrada${RESET}`);
+}
+
+// Verificar se .vercelignore existe
+const vercelIgnoreCheck = {
+  name: '.vercelignore existe',
+  check: () => fs.existsSync('./.vercelignore'),
+  fix: 'Arquivo .vercelignore não encontrado! Necessário para ignorar pasta supabase.'
+};
+
+const passed = vercelIgnoreCheck.check();
+if (passed) {
+  console.log(`${GREEN}✅ ${vercelIgnoreCheck.name}${RESET}`);
+} else {
+  console.log(`${RED}❌ ${vercelIgnoreCheck.name}${RESET}`);
+  console.log(`${YELLOW}   Fix: ${vercelIgnoreCheck.fix}${RESET}`);
+  allPassed = false;
 }
 
 console.log(`\n${BLUE}💡 Dica: Execute 'npm run build' para testar localmente antes do deploy${RESET}`);

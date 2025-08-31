@@ -15,6 +15,10 @@ export default defineConfig({
     sourcemap: false,
     minify: 'terser',
     rollupOptions: {
+      external: [
+        // Excluir arquivos do Supabase backend do build
+        /^\/supabase\//
+      ],
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],

@@ -1,0 +1,39 @@
+# Ignorar arquivos e pastas que não devem ser processados pela Vercel
+
+# Pasta do Supabase backend (contém código Deno)
+supabase/
+
+# Arquivos de configuração backend
+*.deno.ts
+*.deno.js
+
+# Arquivos temporários
+tmp/
+temp/
+
+# Logs
+*.log
+logs/
+
+# Testes
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Arquivos de desenvolvimento
+.env.local
+.env.development.local
+
+# Documentação
+README.md
+DEPLOY_GUIDE.md
+DEPLOY_TROUBLESHOOTING.md
+Attributions.md
+
+# Scripts de verificação
+deploy-check.js
+
+# Guidelines
+guidelines/
