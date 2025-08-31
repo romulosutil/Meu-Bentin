@@ -1,15 +1,36 @@
 # 🔧 Troubleshooting - Deploy Meu Bentin
 
-## ❌ Problemas Comuns e Soluções
+## ✅ PROBLEMA RESOLVIDO: Erro "jsr:" no Deploy
 
-### 1. Erro: `npm error Invalid package name "jsr:"`
-
-**Sintoma:**
+### 🎯 **CAUSA RAIZ IDENTIFICADA E CORRIGIDA**
+O erro `npm error Invalid package name "jsr:"` foi causado pela importação problemática:
+```tsx
+import logoImage from 'figma:asset/cad42b6696e345b68354c15fd24ef4b9098c27ad.png';
 ```
-npm error Invalid package name "jsr:" of package "jsr:@^supabase"
+
+### 🔧 **CORREÇÃO IMPLEMENTADA**
+**❌ MeuBentinLogo.tsx - ANTES (problemático):**
+```tsx
+import logoImage from 'figma:asset/cad42b6696e345b68354c15fd24ef4b9098c27ad.png';
+<img src={logoImage} alt="..." />
 ```
 
-**Soluções:**
+**✅ MeuBentinLogo.tsx - DEPOIS (funcional):**
+```tsx
+// SVG inline oficial com design das três crianças
+<svg viewBox="0 0 200 80" className="h-full w-auto">
+  <rect width="200" height="80" rx="20" fill="url(#logoGradient)" />
+  {/* Design oficial com gradiente rosa, azul e verde */}
+</svg>
+```
+
+---
+
+## ❌ Outros Problemas Comuns e Soluções
+
+### 1. Erro: `npm error Invalid package name "jsr:"` (RESOLVIDO)
+
+**Status:** ✅ **CORRIGIDO**
 
 #### Solução A - Limpar Cache
 ```bash

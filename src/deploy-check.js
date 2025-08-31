@@ -92,19 +92,53 @@ if (allPassed) {
 
 // Verificar package.json para dependências problemáticas
 if (fs.existsSync('./package.json')) {
-  const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
-  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-  
-  const problematicDeps = Object.keys(deps).filter(dep => 
-    dep.includes('jsr:') || dep.includes('@supabase/') || deps[dep].includes('jsr:')
-  );
-  
-  if (problematicDeps.length > 0) {
-    console.log(`${YELLOW}⚠️  Dependências problemáticas encontradas:${RESET}`);
-    problematicDeps.forEach(dep => {
-      console.log(`${RED}   - ${dep}: ${deps[dep]}${RESET}`);
-    });
+  try {
+    const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
+    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+    
+    const problematicDeps = Object.keys(deps).filter(dep => 
+      dep.includes('jsr:') || 
+      dep.includes('@supabase/') || 
+      deps[dep].includes('jsr:') ||
+      dep.startsWith('jsr:')
+    );
+    
+    if (problematicDeps.length > 0) {
+      console.log(`${YELLOW}⚠️  Dependências problemáticas encontradas:${RESET}`);
+      problematicDeps.forEach(dep => {
+        console.log(`${RED}   - ${dep}: ${deps[dep]}${RESET}`);
+      });
+      allPassed = false;
+    } else {
+      console.log(`${GREEN}✅ Package.json sem dependências problemáticas${RESET}`);
+    }
+  } catch (error) {
+    console.log(`${RED}❌ Erro ao ler package.json: ${error.message}${RESET}`);
+    allPassed = false;
   }
+}
+
+// Verificar se não há importações problemáticas nos arquivos
+const problematicImports = [];
+const filesToCheck = ['./App.tsx', './components/MeuBentinLogo.tsx'];
+
+filesToCheck.forEach(file => {
+  if (fs.existsSync(file)) {
+    const content = fs.readFileSync(file, 'utf8');
+    if (content.includes('figma:asset') || content.includes('jsr:')) {
+      problematicImports.push(file);
+    }
+  }
+});
+
+if (problematicImports.length > 0) {
+  console.log(`${RED}❌ Importações problemáticas encontradas em:${RESET}`);
+  problematicImports.forEach(file => {
+    console.log(`${RED}   - ${file}${RESET}`);
+  });
+  allPassed = false;
+} else {
+  console.log(`${GREEN}✅ Nenhuma importação problemática encontrada${RESET}`);
 }
 
 console.log(`\n${BLUE}💡 Dica: Execute 'npm run build' para testar localmente antes do deploy${RESET}`);

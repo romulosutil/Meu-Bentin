@@ -4,7 +4,7 @@ import { EstoqueProvider } from './utils/EstoqueContext';
 import { ToastProvider } from './components/ToastProvider';
 import Dashboard from './components/Dashboard';
 import { ShoppingBag, Package, DollarSign, TrendingUp, BarChart3, Loader2 } from 'lucide-react';
-import MeuBentinLogo, { MeuBentinLogoHeader } from './components/MeuBentinLogo';
+import MeuBentinLogo from './components/MeuBentinLogo';
 
 // Lazy loading para componentes pesados
 const Estoque = lazy(() => import('./components/Estoque'));
@@ -100,11 +100,6 @@ export default function App() {
           {/* Header otimizado */}
           <header className="mb-6 sm:mb-8">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-4 sm:mb-6">
-              {/* Logo container responsivo */}
-              <div className="bg-white rounded-2xl p-3 sm:p-4 lg:p-5 shadow-lg border border-border/20 flex-shrink-0 transition-all duration-200 hover:shadow-xl">
-                <MeuBentinLogoHeader />
-              </div>
-              
               {/* Título responsivo */}
               <div className="flex-1 min-w-0">
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-bentin-pink via-bentin-blue to-bentin-green bg-clip-text text-transparent leading-tight">
