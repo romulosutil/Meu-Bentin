@@ -1,0 +1,439 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 14px;
+  /* Cores baseadas no novo logotipo Meu Bentin */
+  --background: #fdfeff;
+  --foreground: #1a202c;
+  --card: #ffffff;
+  --card-foreground: #2d3748;
+  --popover: #ffffff;
+  --popover-foreground: #2d3748;
+  /* Rosa vibrante do "Meu" como cor primária */
+  --primary: #e91e63;
+  --primary-foreground: #ffffff;
+  /* Azul mais definido como secundária */
+  --secondary: #e1f5fe;
+  --secondary-foreground: #0277bd;
+  --muted: #f7fafc;
+  --muted-foreground: #718096;
+  /* Verde definido do "tin" como accent */
+  --accent: #e8f5e8;
+  --accent-foreground: #2e7d32;
+  --destructive: #e53e3e;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.12);
+  --input: transparent;
+  --input-background: #f7fafc;
+  --switch-background: #e2e8f0;
+  --font-weight-medium: 600;
+  --font-weight-normal: 400;
+  --ring: #e91e63;
+  /* Cores dos gráficos baseadas nas cores do logotipo */
+  --chart-1: #e91e63; /* Rosa vibrante */
+  --chart-2: #2196f3; /* Azul definido */
+  --chart-3: #4caf50; /* Verde definido */
+  --chart-4: #ff6b35; /* Laranja vibrante */
+  --chart-5: #9c27b0; /* Roxo */
+  --radius: 1rem;
+  --sidebar: #fafbfc;
+  --sidebar-foreground: #2d3748;
+  --sidebar-primary: #e91e63;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #475569;
+  --sidebar-border: rgba(0, 0, 0, 0.12);
+  --sidebar-ring: #e91e63;
+  
+  /* Cores aprimoradas do Meu Bentin baseadas no logotipo */
+  --bentin-pink: #e91e63;
+  --bentin-blue: #2196f3;
+  --bentin-green: #4caf50;
+  --bentin-orange: #ff6b35;
+  --bentin-mint: #66bb6a;
+  --bentin-light-blue: #42a5f5;
+  --bentin-lime: #9ccc65;
+  
+  /* Cores específicas para ícones com melhor contraste */
+  --icon-pink: #dc2626;
+  --icon-blue: #2563eb;
+  --icon-green: #16a34a;
+  --icon-orange: #ea580c;
+  --icon-purple: #9333ea;
+  --icon-teal: #0d9488;
+  --icon-gray: #475569;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  
+  /* Cores customizadas Meu Bentin */
+  --color-bentin-pink: var(--bentin-pink);
+  --color-bentin-blue: var(--bentin-blue);
+  --color-bentin-green: var(--bentin-green);
+  --color-bentin-orange: var(--bentin-orange);
+  --color-bentin-mint: var(--bentin-mint);
+  --color-bentin-light-blue: var(--bentin-light-blue);
+  --color-bentin-lime: var(--bentin-lime);
+  
+  /* Cores de ícones otimizadas */
+  --color-icon-pink: var(--icon-pink);
+  --color-icon-blue: var(--icon-blue);
+  --color-icon-green: var(--icon-green);
+  --color-icon-orange: var(--icon-orange);
+  --color-icon-purple: var(--icon-purple);
+  --color-icon-teal: var(--icon-teal);
+  --color-icon-gray: var(--icon-gray);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+  
+  /* Cursor pointer para elementos interativos */
+  button, 
+  [role="button"], 
+  [role="tab"], 
+  [role="menuitem"],
+  .cursor-pointer,
+  a,
+  summary,
+  input[type="checkbox"],
+  input[type="radio"],
+  select,
+  .bentin-tab-trigger,
+  .bentin-card:hover,
+  [data-state="active"],
+  [data-state="inactive"],
+  [tabindex="0"]:not(input):not(textarea) {
+    @apply cursor-pointer;
+  }
+  
+  /* Cursor não permitido para elementos desabilitados */
+  button:disabled,
+  input:disabled,
+  select:disabled,
+  textarea:disabled,
+  [aria-disabled="true"] {
+    @apply cursor-not-allowed;
+  }
+  
+  /* Melhorias de acessibilidade */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+  
+  /* Melhorias para touch e responsividade */
+  @media (hover: none) and (pointer: coarse) {
+    button, 
+    [role="button"],
+    .bentin-tab-trigger {
+      @apply min-h-[44px] min-w-[44px];
+    }
+    
+    /* Aumentar área de toque para elementos pequenos */
+    .touch-target {
+      @apply min-h-[44px] min-w-[44px];
+    }
+  }
+  
+  /* Scroll suave */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Otimizações para scroll em dispositivos móveis */
+  .scroll-smooth {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Estados de carregamento */
+  @keyframes skeleton {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+  }
+  
+  .skeleton {
+    animation: skeleton 2s ease-in-out infinite;
+  }
+  
+  /* Melhorias para textos responsivos */
+  .text-responsive {
+    @apply text-sm sm:text-base;
+  }
+  
+  .text-responsive-lg {
+    @apply text-base sm:text-lg;
+  }
+  
+  /* Espaçamento responsivo */
+  .space-responsive {
+    @apply space-y-3 sm:space-y-4;
+  }
+  
+  .gap-responsive {
+    @apply gap-3 sm:gap-4;
+  }
+  
+  /* Estilos customizados Meu Bentin - melhorado para contraste */
+  .bentin-gradient {
+    background: linear-gradient(135deg, var(--bentin-pink) 0%, var(--bentin-blue) 50%, var(--bentin-green) 100%);
+  }
+  
+  .bentin-card {
+    @apply bg-white rounded-2xl shadow-lg border border-border transition-all duration-300 hover:shadow-xl hover:scale-[1.01];
+  }
+  
+  .bentin-button-primary {
+    @apply bg-bentin-pink hover:bg-bentin-pink/85 text-white rounded-xl px-6 py-3 font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-[1.02] focus:ring-4 focus:ring-bentin-pink/30;
+  }
+  
+  .bentin-button-secondary {
+    @apply bg-white border-2 border-bentin-blue hover:bg-bentin-blue hover:text-white text-bentin-blue rounded-xl px-6 py-3 font-semibold transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+  
+  .bentin-icon-wrapper {
+    @apply w-12 h-12 rounded-xl flex items-center justify-center shadow-md transition-all duration-200;
+  }
+  
+  .bentin-tab-trigger {
+    @apply hover:bg-slate-50 transition-all duration-200 text-slate-700;
+  }
+  
+  .bentin-tab-trigger:hover:not([data-state="active"]) {
+    @apply bg-slate-50 scale-[1.02] shadow-sm;
+  }
+  
+  .bentin-tab-trigger:hover:not([data-state="active"]) .bentin-tab-icon {
+    @apply shadow-md scale-[1.05];
+  }
+  
+  .bentin-tab-trigger[data-state="active"] {
+    @apply text-white font-semibold;
+  }
+  
+  .bentin-tab-trigger[data-state="active"] .bentin-tab-icon {
+    @apply bg-white/25 backdrop-blur-sm shadow-lg;
+  }
+  
+  /* Melhorias para ícones em botões */
+  .bentin-button-primary .lucide {
+    @apply drop-shadow-sm;
+  }
+  
+  .bentin-button-secondary .lucide {
+    @apply transition-colors duration-200;
+  }
+  
+  .bentin-button-secondary:hover .lucide {
+    @apply text-white;
+  }
+}
+
+@layer utilities {
+  .text-bentin-pink { color: var(--bentin-pink); }
+  .text-bentin-blue { color: var(--bentin-blue); }
+  .text-bentin-green { color: var(--bentin-green); }
+  .text-bentin-orange { color: var(--bentin-orange); }
+  .text-bentin-mint { color: var(--bentin-mint); }
+  .text-bentin-light-blue { color: var(--bentin-light-blue); }
+  .text-bentin-lime { color: var(--bentin-lime); }
+  
+  .bg-bentin-pink { background-color: var(--bentin-pink); }
+  .bg-bentin-blue { background-color: var(--bentin-blue); }
+  .bg-bentin-green { background-color: var(--bentin-green); }
+  .bg-bentin-orange { background-color: var(--bentin-orange); }
+  .bg-bentin-mint { background-color: var(--bentin-mint); }
+  .bg-bentin-light-blue { background-color: var(--bentin-light-blue); }
+  .bg-bentin-lime { background-color: var(--bentin-lime); }
+  
+  .border-bentin-pink { border-color: var(--bentin-pink); }
+  .border-bentin-blue { border-color: var(--bentin-blue); }
+  .border-bentin-green { border-color: var(--bentin-green); }
+  
+  /* Classes utilitárias para ícones com melhor contraste */
+  .icon-primary {
+    @apply text-slate-700 transition-colors duration-200;
+  }
+  
+  .icon-active {
+    @apply text-white transition-colors duration-200;
+  }
+  
+  .icon-wrapper {
+    @apply p-2 rounded-lg transition-all duration-200 shadow-sm;
+  }
+  
+  .icon-wrapper-gradient {
+    @apply p-2 rounded-lg transition-all duration-200 shadow-sm bg-gradient-to-br;
+  }
+  
+  .icon-size-sm { @apply h-4 w-4; }
+  .icon-size-md { @apply h-5 w-5; }
+  .icon-size-lg { @apply h-6 w-6; }
+  .icon-size-xl { @apply h-8 w-8; }
+  
+  /* Cores específicas para ícones */
+  .text-icon-pink { color: var(--icon-pink); }
+  .text-icon-blue { color: var(--icon-blue); }
+  .text-icon-green { color: var(--icon-green); }
+  .text-icon-orange { color: var(--icon-orange); }
+  .text-icon-purple { color: var(--icon-purple); }
+  .text-icon-teal { color: var(--icon-teal); }
+  .text-icon-gray { color: var(--icon-gray); }
+  
+  /* Efeitos visuais para ícones */
+  .icon-glow {
+    @apply drop-shadow-sm hover:drop-shadow-md transition-all duration-200;
+  }
+  
+  .icon-bounce {
+    @apply hover:scale-110 transition-transform duration-200;
+  }
+}
+
+/**
+ * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
+ */
+@layer base {
+  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
+    h1 {
+      font-size: var(--text-2xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.4;
+      color: var(--foreground);
+    }
+
+    h2 {
+      font-size: var(--text-xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.4;
+      color: var(--foreground);
+    }
+
+    h3 {
+      font-size: var(--text-lg);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.4;
+      color: var(--foreground);
+    }
+
+    h4 {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.4;
+      color: var(--foreground);
+    }
+
+    p {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.6;
+      color: var(--foreground);
+    }
+
+    label {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.4;
+      color: var(--foreground);
+    }
+
+    button {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.4;
+    }
+
+    input {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.4;
+      color: var(--foreground);
+    }
+  }
+}
+
+html {
+  font-size: var(--font-size);
+}
