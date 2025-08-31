@@ -67,10 +67,26 @@ O sistema é totalmente responsivo e otimizado para:
 
 ## 🎨 Design System
 
+### Logotipo Oficial
+O sistema utiliza o logotipo oficial do Meu Bentin, que apresenta três crianças abraçadas representando diversão e cuidado.
+
+#### Componente MeuBentinLogo
+```tsx
+// Uso padrão no header
+<MeuBentinLogoHeader />
+
+// Uso customizado com tamanhos
+<MeuBentinLogo size="sm" | "md" | "lg" | "xl" />
+
+// Variações específicas
+<MeuBentinLogoNavbar />    // Para navegação
+<MeuBentinLogoCompact />   // Versão compacta
+```
+
 ### Cores Principais
-- **Rosa**: #e91e63 (Destaque)
-- **Azul**: #2196f3 (Informação)
-- **Verde**: #4caf50 (Sucesso)
+- **Rosa**: #e91e63 (Destaque - "Meu")
+- **Azul**: #2196f3 (Informação - "Ben") 
+- **Verde**: #4caf50 (Sucesso - "tin")
 - **Laranja**: #ff6b35 (Atenção)
 - **Mint**: #66bb6a (Complementar)
 
@@ -80,6 +96,7 @@ O sistema é totalmente responsivo e otimizado para:
 - Formulários com validação
 - Tabelas responsivas
 - Gráficos interativos
+- Logo responsivo com fallback elegante
 
 ## 🔧 Instalação e Deploy
 
