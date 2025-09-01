@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useEstoque } from '../utils/EstoqueContext';
+import { useEstoque } from '../utils/EstoqueContextSupabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -83,13 +83,13 @@ const Receita = () => {
 
     return vendas.filter(venda => {
       const dataVenda = new Date(venda.data);
-      return dataVenda >= dataInicio && venda.status === 'concluida';
+      return dataVenda >= dataInicio;
     });
   }, [vendas, periodo]);
 
   // Calcular métricas financeiras
   const metricas = useMemo(() => {
-    const receitaTotal = dadosPeriodo.reduce((total, venda) => total + venda.total, 0);
+    const receitaTotal = dadosPeriodo.reduce((total, venda) => total + venda.precoTotal, 0);
     const numeroVendas = dadosPeriodo.length;
     const ticketMedio = numeroVendas > 0 ? receitaTotal / numeroVendas : 0;
     
@@ -114,10 +114,10 @@ const Receita = () => {
     
     const vendas30DiasPrev = vendas.filter(venda => {
       const dataVenda = new Date(venda.data);
-      return dataVenda >= inicio30DiasPrev && dataVenda < fim30DiasPrev && venda.status === 'concluida';
+      return dataVenda >= inicio30DiasPrev && dataVenda < fim30DiasPrev;
     });
     
-    const receita30DiasPrev = vendas30DiasPrev.reduce((total, venda) => total + venda.total, 0);
+    const receita30DiasPrev = vendas30DiasPrev.reduce((total, venda) => total + venda.precoTotal, 0);
     const crescimento = receita30DiasPrev > 0 ? ((receitaTotal - receita30DiasPrev) / receita30DiasPrev) * 100 : 0;
 
     return {
@@ -144,7 +144,7 @@ const Receita = () => {
         acc[semana] = { semana, receita: 0, vendas: 0 };
       }
       
-      acc[semana].receita += venda.total;
+      acc[semana].receita += venda.precoTotal;
       acc[semana].vendas += 1;
       
       return acc;
@@ -158,21 +158,19 @@ const Receita = () => {
       if (!acc[forma]) {
         acc[forma] = { nome: forma, valor: 0 };
       }
-      acc[forma].valor += venda.total;
+      acc[forma].valor += venda.precoTotal;
       return acc;
     }, {} as Record<string, { nome: string; valor: number }>);
 
     // Agrupar por categorias
     const categorias = dadosPeriodo.reduce((acc, venda) => {
-      venda.itens.forEach(item => {
-        const produto = produtos.find(p => p.id === item.produtoId);
-        const categoria = produto?.categoria || 'Outros';
-        
-        if (!acc[categoria]) {
-          acc[categoria] = { categoria, receita: 0 };
-        }
-        acc[categoria].receita += item.subtotal;
-      });
+      const produto = produtos.find(p => p.id === venda.produtoId);
+      const categoria = venda.categoria || produto?.categoria || 'Outros';
+      
+      if (!acc[categoria]) {
+        acc[categoria] = { categoria, receita: 0 };
+      }
+      acc[categoria].receita += venda.precoTotal;
       return acc;
     }, {} as Record<string, { categoria: string; receita: number }>);
 

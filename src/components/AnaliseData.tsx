@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useEstoque } from '../utils/EstoqueContext';
+import { useEstoque } from '../utils/EstoqueContextSupabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -53,17 +53,17 @@ const AnaliseData = () => {
     // Filtrar vendas por período
     const vendasPeriodo = vendas.filter(venda => {
       const dataVenda = new Date(venda.data);
-      return dataVenda >= dias30 && venda.status === 'concluida';
+      return dataVenda >= dias30;
     });
     
     const vendasSemana = vendas.filter(venda => {
       const dataVenda = new Date(venda.data);
-      return dataVenda >= dias7 && venda.status === 'concluida';
+      return dataVenda >= dias7;
     });
 
     // Receita total
-    const receitaTotal = vendasPeriodo.reduce((total, venda) => total + venda.total, 0);
-    const receitaSemana = vendasSemana.reduce((total, venda) => total + venda.total, 0);
+    const receitaTotal = vendasPeriodo.reduce((total, venda) => total + venda.precoTotal, 0);
+    const receitaSemana = vendasSemana.reduce((total, venda) => total + venda.precoTotal, 0);
     
     // Produtos mais vendidos
     const contadorProdutos: { [key: string]: { 
@@ -74,20 +74,18 @@ const AnaliseData = () => {
     } } = {};
     
     vendasPeriodo.forEach(venda => {
-      venda.itens.forEach(item => {
-        const produto = produtos.find(p => p.id === item.produtoId);
-        if (contadorProdutos[item.produtoId]) {
-          contadorProdutos[item.produtoId].quantidade += item.quantidade;
-          contadorProdutos[item.produtoId].receita += item.subtotal;
-        } else {
-          contadorProdutos[item.produtoId] = {
-            nome: item.produto,
-            quantidade: item.quantidade,
-            receita: item.subtotal,
-            categoria: produto?.categoria || 'N/A'
-          };
-        }
-      });
+      const produto = produtos.find(p => p.id === venda.produtoId);
+      if (contadorProdutos[venda.produtoId]) {
+        contadorProdutos[venda.produtoId].quantidade += venda.quantidade;
+        contadorProdutos[venda.produtoId].receita += venda.precoTotal;
+      } else {
+        contadorProdutos[venda.produtoId] = {
+          nome: venda.nomeProduto,
+          quantidade: venda.quantidade,
+          receita: venda.precoTotal,
+          categoria: venda.categoria || produto?.categoria || 'N/A'
+        };
+      }
     });
     
     const produtosMaisVendidos = Object.values(contadorProdutos)
@@ -98,20 +96,18 @@ const AnaliseData = () => {
     const vendasPorCategoria: { [key: string]: { vendas: number; receita: number } } = {};
     
     vendasPeriodo.forEach(venda => {
-      venda.itens.forEach(item => {
-        const produto = produtos.find(p => p.id === item.produtoId);
-        const categoria = produto?.categoria || 'Outros';
-        
-        if (vendasPorCategoria[categoria]) {
-          vendasPorCategoria[categoria].vendas += item.quantidade;
-          vendasPorCategoria[categoria].receita += item.subtotal;
-        } else {
-          vendasPorCategoria[categoria] = {
-            vendas: item.quantidade,
-            receita: item.subtotal
-          };
-        }
-      });
+      const produto = produtos.find(p => p.id === venda.produtoId);
+      const categoria = venda.categoria || produto?.categoria || 'Outros';
+      
+      if (vendasPorCategoria[categoria]) {
+        vendasPorCategoria[categoria].vendas += venda.quantidade;
+        vendasPorCategoria[categoria].receita += venda.precoTotal;
+      } else {
+        vendasPorCategoria[categoria] = {
+          vendas: venda.quantidade,
+          receita: venda.precoTotal
+        };
+      }
     });
 
     const categorias = Object.entries(vendasPorCategoria)
@@ -120,18 +116,18 @@ const AnaliseData = () => {
 
     // Performance de vendedores
     const performanceVendedores = vendedores.map(vendedor => {
-      const vendasVendedor = vendasPeriodo.filter(v => v.vendedorId === vendedor.id);
-      const receita = vendasVendedor.reduce((total, venda) => total + venda.total, 0);
+      const vendasVendedor = vendasPeriodo.filter(v => v.vendedor === vendedor);
+      const receita = vendasVendedor.reduce((total, venda) => total + venda.precoTotal, 0);
       const quantidadeVendas = vendasVendedor.length;
       const ticketMedio = quantidadeVendas > 0 ? receita / quantidadeVendas : 0;
       
       return {
-        nome: vendedor.nome,
+        nome: vendedor,
         vendas: quantidadeVendas,
         receita,
         ticketMedio,
-        comissao: vendedor.comissao,
-        comissaoTotal: receita * (vendedor.comissao / 100)
+        comissao: 0, // Valor padrão
+        comissaoTotal: 0 // Valor padrão
       };
     }).sort((a, b) => b.receita - a.receita);
 
@@ -142,18 +138,18 @@ const AnaliseData = () => {
       
       const vendasSemana = vendas.filter(venda => {
         const dataVenda = new Date(venda.data);
-        return dataVenda >= inicioSemana && dataVenda < fimSemana && venda.status === 'concluida';
+        return dataVenda >= inicioSemana && dataVenda < fimSemana;
       });
       
       return {
         semana: `Sem ${4 - i}`,
         vendas: vendasSemana.length,
-        receita: vendasSemana.reduce((total, venda) => total + venda.total, 0)
+        receita: vendasSemana.reduce((total, venda) => total + venda.precoTotal, 0)
       };
     }).reverse();
 
     // Análise de estoque
-    const produtosBaixoEstoque = produtos.filter(p => p.quantidade <= p.estoqueMinimo);
+    const produtosBaixoEstoque = produtos.filter(p => p.quantidade <= p.minimo);
     const produtosEsgotados = produtos.filter(p => p.quantidade === 0);
     const valorEstoque = produtos.reduce((total, p) => total + (p.preco * p.quantidade), 0);
     

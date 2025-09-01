@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useEstoque, type Venda, type Vendedor } from '../utils/EstoqueContext';
+import { useEstoque, type Venda } from '../utils/EstoqueContextSupabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -132,63 +132,53 @@ const Vendas = () => {
   // Filtrar vendas
   const vendasFiltradas = useMemo(() => {
     return vendasPorPeriodo.filter(venda => {
-      const matchFiltro = venda.numero.toLowerCase().includes(filtro.toLowerCase()) ||
-                         venda.cliente.toLowerCase().includes(filtro.toLowerCase());
-      const matchStatus = statusFiltro === 'todos' || venda.status === statusFiltro;
-      const matchVendedor = vendedorFiltro === 'todos' || venda.vendedorId === vendedorFiltro;
-      return matchFiltro && matchStatus && matchVendedor;
+      const matchFiltro = venda.id.toLowerCase().includes(filtro.toLowerCase()) ||
+                         venda.nomeProduto.toLowerCase().includes(filtro.toLowerCase());
+      const matchVendedor = vendedorFiltro === 'todos' || venda.vendedor === vendedorFiltro;
+      return matchFiltro && matchVendedor;
     });
-  }, [vendasPorPeriodo, filtro, statusFiltro, vendedorFiltro]);
+  }, [vendasPorPeriodo, filtro, vendedorFiltro]);
 
   // Calcular estatísticas
   const estatisticas = useMemo(() => {
     const hoje = new Date();
     const vendasHoje = vendas.filter(v => {
       const dataVenda = new Date(v.data);
-      return dataVenda.toDateString() === hoje.toDateString() && v.status === 'concluida';
+      return dataVenda.toDateString() === hoje.toDateString();
     });
 
-    const totalVendasHoje = vendasHoje.reduce((total, v) => total + v.total, 0);
-    const totalVendasPeriodo = vendasPorPeriodo.filter(v => v.status === 'concluida').length;
-    const receitaPeriodo = vendasPorPeriodo
-      .filter(v => v.status === 'concluida')
-      .reduce((total, v) => total + v.total, 0);
+    const totalVendasHoje = vendasHoje.reduce((total, v) => total + v.precoTotal, 0);
+    const totalVendasPeriodo = vendasPorPeriodo.length;
+    const receitaPeriodo = vendasPorPeriodo.reduce((total, v) => total + v.precoTotal, 0);
 
     return {
       vendasHoje: vendasHoje.length,
       totalVendasHoje,
       totalVendasPeriodo,
       receitaPeriodo,
-      vendedoresAtivos: vendedores.filter(v => v.ativo).length
+      vendedoresAtivos: vendedores.length
     };
   }, [vendas, vendasPorPeriodo, vendedores]);
 
   // Função para adicionar vendedor
   const handleAdicionarVendedor = useCallback(async () => {
-    const validation = validateVenda(formVendedor as any);
-    if (!validation.isValid) {
+    if (!formVendedor.nome.trim()) {
       addToast({
         type: 'error',
         title: 'Erro na validação',
-        description: validation.errors.join(', ')
+        description: 'Nome do vendedor é obrigatório'
       });
       return;
     }
 
     setIsLoading(true);
     try {
-      const novoVendedor = adicionarVendedor({
-        nome: formVendedor.nome.trim(),
-        email: formVendedor.email.trim(),
-        telefone: formVendedor.telefone.trim(),
-        comissao: parseFloat(formVendedor.comissao),
-        ativo: true
-      });
+      await adicionarVendedor(formVendedor.nome.trim());
 
       addToast({
         type: 'success',
         title: 'Vendedor adicionado',
-        description: `${novoVendedor.nome} foi cadastrado com sucesso!`
+        description: `${formVendedor.nome.trim()} foi cadastrado com sucesso!`
       });
       setFormVendedor(initialVendedorForm);
       setModalNovoVendedor(false);
@@ -279,12 +269,11 @@ const Vendas = () => {
 
   // Função para finalizar venda
   const finalizarVenda = useCallback(async () => {
-    const validation = validateVenda(formVenda as any);
-    if (!validation.isValid) {
+    if (!formVenda.cliente.trim() || !formVenda.vendedorId || !formVenda.formaPagamento) {
       addToast({
         type: 'error',
         title: 'Dados incompletos',
-        description: validation.errors.join(', ')
+        description: 'Preencha todos os campos obrigatórios'
       });
       return;
     }
@@ -300,37 +289,30 @@ const Vendas = () => {
 
     setIsLoading(true);
     try {
-      const vendedor = vendedores.find(v => v.id === formVenda.vendedorId);
-      if (!vendedor) {
-        addToast({
-          type: 'error',
-          title: 'Vendedor não encontrado',
-          description: 'Selecione um vendedor válido'
+      // Para cada item do carrinho, criar uma venda individual (compatibilidade com sistema antigo)
+      for (const item of carrinhoItens) {
+        const desconto = parseFloat(formVenda.desconto) || 0;
+        const descontoItem = (desconto / carrinhoItens.length); // Distribuir desconto proporcionalmente
+        
+        await adicionarVenda({
+          produtoId: item.produtoId,
+          nomeProduto: item.produto,
+          quantidade: item.quantidade,
+          precoUnitario: item.precoUnitario,
+          precoTotal: item.subtotal - descontoItem,
+          vendedor: formVenda.vendedorId,
+          categoria: 'Produto',
+          formaPagamento: formVenda.formaPagamento as any,
+          desconto: descontoItem,
+          data: new Date().toISOString(),
+          observacoes: formVenda.observacoes.trim()
         });
-        return;
       }
-
-      const subtotal = carrinhoItens.reduce((sum, item) => sum + item.subtotal, 0);
-      const desconto = parseFloat(formVenda.desconto) || 0;
-      const total = subtotal - desconto;
-
-      const novaVenda = adicionarVenda({
-        cliente: formVenda.cliente.trim(),
-        vendedorId: formVenda.vendedorId,
-        vendedor: vendedor.nome,
-        itens: [...carrinhoItens],
-        subtotal,
-        desconto,
-        total,
-        formaPagamento: formVenda.formaPagamento,
-        status: 'concluida',
-        observacoes: formVenda.observacoes.trim()
-      });
 
       addToast({
         type: 'success',
         title: 'Venda finalizada',
-        description: `Venda ${novaVenda.numero} registrada com sucesso!`
+        description: `Venda registrada com sucesso!`
       });
       
       // Limpar formulário
@@ -346,7 +328,7 @@ const Vendas = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [formVenda, carrinhoItens, vendedores, adicionarVenda, addToast]);
+  }, [formVenda, carrinhoItens, adicionarVenda, addToast]);
 
   // Funções auxiliares
   const getStatusBadge = useCallback((status: string) => {

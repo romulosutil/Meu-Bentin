@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { useEstoque } from '../utils/EstoqueContext';
+import { useEstoque } from '../utils/EstoqueContextSupabase';
 import { 
   DollarSign, 
   ShoppingBag, 

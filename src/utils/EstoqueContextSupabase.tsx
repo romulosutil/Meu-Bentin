@@ -1,56 +1,13 @@
 /**
  * Contexto principal do Sistema Meu Bentin
- * 100% localStorage - Zero dependências externas
+ * Versão Supabase - Usa banco de dados real
  */
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { LocalStorage } from './localStorage';
+import { supabaseService, Produto, Venda, Meta } from './supabaseService';
+import { runDiagnostics } from './testSupabase';
 
-// Tipos principais
-export interface Produto {
-  id: string;
-  nome: string;
-  categoria: string;
-  preco: number;
-  custo: number;
-  quantidade: number;
-  minimo: number;
-  vendedor: string;
-  cor?: string;
-  tamanho?: string;
-  marca?: string;
-  descricao?: string;
-  ativo: boolean;
-  dataAtualizacao: string;
-  emPromocao?: boolean;
-  precoPromocional?: number;
-  estoqueMinimo?: number; // Compatibilidade com componentes antigos
-}
-
-export interface Venda {
-  id: string;
-  produtoId: string;
-  nomeProduto: string;
-  quantidade: number;
-  precoUnitario: number;
-  precoTotal: number;
-  vendedor: string;
-  categoria: string;
-  formaPagamento: 'dinheiro' | 'cartao-debito' | 'cartao-credito' | 'pix' | 'parcelado';
-  desconto: number;
-  data: string;
-  observacoes?: string;
-}
-
-export interface Meta {
-  id: string;
-  mes: string;
-  ano: number;
-  valorMeta: number;
-  vendedor: string;
-  ativa: boolean;
-}
-
+// Tipos mantidos para compatibilidade
 export interface EstoqueState {
   produtos: Produto[];
   vendas: Venda[];
@@ -61,7 +18,7 @@ export interface EstoqueState {
   error: string | null;
 }
 
-// Ações do reducer
+// Ações do reducer (mantidas as mesmas)
 type EstoqueAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
@@ -94,7 +51,7 @@ const initialState: EstoqueState = {
   error: null,
 };
 
-// Reducer
+// Reducer (mantido o mesmo)
 function estoqueReducer(state: EstoqueState, action: EstoqueAction): EstoqueState {
   switch (action.type) {
     case 'SET_LOADING':
@@ -190,7 +147,7 @@ function estoqueReducer(state: EstoqueState, action: EstoqueAction): EstoqueStat
   }
 }
 
-// Context
+// Context (interface mantida para compatibilidade)
 const EstoqueContext = createContext<{
   state: EstoqueState;
   dispatch: React.Dispatch<EstoqueAction>;
@@ -218,20 +175,35 @@ const EstoqueContext = createContext<{
   };
 } | null>(null);
 
-// Provider
+// Provider com integração Supabase
 export function EstoqueProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(estoqueReducer, initialState);
+  const [isInitialized, setIsInitialized] = React.useState(false);
 
-  // Carregar dados do localStorage
+  // Carregar dados do Supabase
   const carregarDados = async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
+      dispatch({ type: 'SET_ERROR', payload: null });
       
-      const produtos = LocalStorage.load('produtos', []);
-      const vendas = LocalStorage.load('vendas', []);
-      const categorias = LocalStorage.load('categorias', initialState.categorias);
-      const vendedores = LocalStorage.load('vendedores', initialState.vendedores);
-      const metas = LocalStorage.load('metas', []);
+      console.log('🔄 Carregando dados do Supabase...');
+      
+      // Carregar todas as entidades em paralelo
+      const [produtos, vendas, categorias, vendedores, metas] = await Promise.all([
+        supabaseService.getProdutos(),
+        supabaseService.getVendas(),
+        supabaseService.getCategorias(),
+        supabaseService.getVendedores(),
+        supabaseService.getMetas()
+      ]);
+
+      console.log('✅ Dados carregados:', {
+        produtos: produtos.length,
+        vendas: vendas.length,
+        categorias: categorias.length,
+        vendedores: vendedores.length,
+        metas: metas.length
+      });
 
       dispatch({ type: 'SET_PRODUTOS', payload: produtos });
       dispatch({ type: 'SET_VENDAS', payload: vendas });
@@ -241,128 +213,223 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
       
       dispatch({ type: 'SET_LOADING', payload: false });
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao carregar dados' });
+      console.error('❌ Erro ao carregar dados:', error);
+      
+      // Usar dados padrão em caso de erro
+      console.log('🔄 Usando dados padrão temporariamente...');
+      dispatch({ type: 'SET_CATEGORIAS', payload: ['Roupas', 'Calçados', 'Acessórios', 'Brinquedos'] });
+      dispatch({ type: 'SET_VENDEDORES', payload: ['Naila', 'Vendedor 2'] });
+      
+      dispatch({ type: 'SET_ERROR', payload: 'Conexão com banco de dados indisponível. Usando modo offline temporário.' });
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
-  // Salvar dados no localStorage
+  // Salvar dados (não necessário no Supabase - operações são imediatas)
   const salvarDados = async () => {
-    try {
-      LocalStorage.save('produtos', state.produtos);
-      LocalStorage.save('vendas', state.vendas);
-      LocalStorage.save('categorias', state.categorias);
-      LocalStorage.save('vendedores', state.vendedores);
-      LocalStorage.save('metas', state.metas);
-    } catch (error) {
-      console.error('Erro ao salvar dados:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao salvar dados' });
-    }
+    // No-op - dados são salvos automaticamente no Supabase
+    return Promise.resolve();
   };
 
-  // Actions
+  // Actions com integração Supabase
   const actions = {
     carregarDados,
     salvarDados,
     
     // Produtos
     adicionarProduto: async (produtoData: Omit<Produto, 'id' | 'dataAtualizacao'>) => {
-      const produto: Produto = {
-        ...produtoData,
-        id: Date.now().toString(),
-        dataAtualizacao: new Date().toISOString(),
-      };
-      dispatch({ type: 'ADD_PRODUTO', payload: produto });
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const novoProduto = await supabaseService.adicionarProduto(produtoData);
+        dispatch({ type: 'ADD_PRODUTO', payload: novoProduto });
+        dispatch({ type: 'SET_LOADING', payload: false });
+      } catch (error) {
+        console.error('Erro ao adicionar produto:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar produto' });
+      }
     },
 
     atualizarProduto: async (produto: Produto) => {
-      const produtoAtualizado = {
-        ...produto,
-        dataAtualizacao: new Date().toISOString(),
-      };
-      dispatch({ type: 'UPDATE_PRODUTO', payload: produtoAtualizado });
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const produtoAtualizado = await supabaseService.atualizarProduto(produto);
+        dispatch({ type: 'UPDATE_PRODUTO', payload: produtoAtualizado });
+        dispatch({ type: 'SET_LOADING', payload: false });
+      } catch (error) {
+        console.error('Erro ao atualizar produto:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar produto' });
+      }
     },
 
     removerProduto: async (id: string) => {
-      dispatch({ type: 'DELETE_PRODUTO', payload: id });
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        await supabaseService.removerProduto(id);
+        dispatch({ type: 'DELETE_PRODUTO', payload: id });
+        dispatch({ type: 'SET_LOADING', payload: false });
+      } catch (error) {
+        console.error('Erro ao remover produto:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao remover produto' });
+      }
     },
 
     // Vendas
     adicionarVenda: async (vendaData: Omit<Venda, 'id'>) => {
-      const venda: Venda = {
-        ...vendaData,
-        id: Date.now().toString(),
-      };
-      dispatch({ type: 'ADD_VENDA', payload: venda });
-      
-      // Atualizar estoque automaticamente
-      const produto = state.produtos.find(p => p.id === venda.produtoId);
-      if (produto) {
-        const produtoAtualizado = {
-          ...produto,
-          quantidade: produto.quantidade - venda.quantidade,
-          dataAtualizacao: new Date().toISOString(),
-        };
-        dispatch({ type: 'UPDATE_PRODUTO', payload: produtoAtualizado });
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const novaVenda = await supabaseService.adicionarVenda(vendaData);
+        dispatch({ type: 'ADD_VENDA', payload: novaVenda });
+        
+        // Atualizar estoque automaticamente (o banco já faz isso, mas vamos atualizar localmente)
+        const produto = state.produtos.find(p => p.id === vendaData.produtoId);
+        if (produto) {
+          const produtoAtualizado = {
+            ...produto,
+            quantidade: produto.quantidade - vendaData.quantidade,
+            dataAtualizacao: new Date().toISOString(),
+          };
+          dispatch({ type: 'UPDATE_PRODUTO', payload: produtoAtualizado });
+        }
+        
+        dispatch({ type: 'SET_LOADING', payload: false });
+      } catch (error) {
+        console.error('Erro ao adicionar venda:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao registrar venda' });
       }
     },
 
     removerVenda: async (id: string) => {
-      dispatch({ type: 'DELETE_VENDA', payload: id });
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        await supabaseService.removerVenda(id);
+        dispatch({ type: 'DELETE_VENDA', payload: id });
+        dispatch({ type: 'SET_LOADING', payload: false });
+      } catch (error) {
+        console.error('Erro ao remover venda:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao cancelar venda' });
+      }
     },
 
     // Categorias
     adicionarCategoria: async (nome: string) => {
-      if (!state.categorias.includes(nome)) {
-        dispatch({ type: 'ADD_CATEGORIA', payload: nome });
+      try {
+        if (!state.categorias.includes(nome)) {
+          await supabaseService.adicionarCategoria(nome);
+          dispatch({ type: 'ADD_CATEGORIA', payload: nome });
+        }
+        return Promise.resolve();
+      } catch (error) {
+        console.error('Erro ao adicionar categoria:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar categoria' });
       }
-      return Promise.resolve();
     },
 
     removerCategoria: async (nome: string) => {
-      dispatch({ type: 'DELETE_CATEGORIA', payload: nome });
+      try {
+        await supabaseService.removerCategoria(nome);
+        dispatch({ type: 'DELETE_CATEGORIA', payload: nome });
+      } catch (error) {
+        console.error('Erro ao remover categoria:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao remover categoria' });
+      }
     },
 
     // Vendedores
     adicionarVendedor: async (nome: string) => {
-      if (!state.vendedores.includes(nome)) {
-        dispatch({ type: 'ADD_VENDEDOR', payload: nome });
+      try {
+        if (!state.vendedores.includes(nome)) {
+          await supabaseService.adicionarVendedor(nome);
+          dispatch({ type: 'ADD_VENDEDOR', payload: nome });
+        }
+      } catch (error) {
+        console.error('Erro ao adicionar vendedor:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar vendedor' });
       }
     },
 
     removerVendedor: async (nome: string) => {
-      dispatch({ type: 'DELETE_VENDEDOR', payload: nome });
+      try {
+        await supabaseService.removerVendedor(nome);
+        dispatch({ type: 'DELETE_VENDEDOR', payload: nome });
+      } catch (error) {
+        console.error('Erro ao remover vendedor:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao remover vendedor' });
+      }
     },
 
     // Metas
     adicionarMeta: async (metaData: Omit<Meta, 'id'>) => {
-      const meta: Meta = {
-        ...metaData,
-        id: Date.now().toString(),
-      };
-      dispatch({ type: 'ADD_META', payload: meta });
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const novaMeta = await supabaseService.adicionarMeta(metaData);
+        dispatch({ type: 'ADD_META', payload: novaMeta });
+        dispatch({ type: 'SET_LOADING', payload: false });
+      } catch (error) {
+        console.error('Erro ao adicionar meta:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar meta' });
+      }
     },
 
     atualizarMeta: async (meta: Meta) => {
-      dispatch({ type: 'UPDATE_META', payload: meta });
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const metaAtualizada = await supabaseService.atualizarMeta(meta);
+        dispatch({ type: 'UPDATE_META', payload: metaAtualizada });
+        dispatch({ type: 'SET_LOADING', payload: false });
+      } catch (error) {
+        console.error('Erro ao atualizar meta:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar meta' });
+      }
     },
 
     removerMeta: async (id: string) => {
-      dispatch({ type: 'DELETE_META', payload: id });
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        await supabaseService.removerMeta(id);
+        dispatch({ type: 'DELETE_META', payload: id });
+        dispatch({ type: 'SET_LOADING', payload: false });
+      } catch (error) {
+        console.error('Erro ao remover meta:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao remover meta' });
+      }
     },
   };
 
-  // Auto-salvar quando o estado mudar
-  useEffect(() => {
-    if (!state.loading) {
-      salvarDados();
-    }
-  }, [state.produtos, state.vendas, state.categorias, state.vendedores, state.metas]);
-
   // Carregar dados na inicialização
   useEffect(() => {
-    carregarDados();
+    const initializeData = async () => {
+      try {
+        // Executar diagnósticos em desenvolvimento
+        if (import.meta.env.VITE_ENVIRONMENT === 'development') {
+          await runDiagnostics();
+        }
+        
+        await carregarDados();
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Erro na inicialização:', error);
+        // Não quebrar a aplicação, apenas mostrar dados padrão
+        setIsInitialized(true);
+      }
+    };
+
+    initializeData();
   }, []);
+
+  // Mostrar loading durante inicialização
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-bentin-pink mx-auto"></div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-foreground">Meu Bentin</h3>
+            <p className="text-muted-foreground">Inicializando sistema...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <EstoqueContext.Provider value={{ state, dispatch, actions }}>
@@ -371,7 +438,7 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Hook customizado
+// Hook customizado (mantido para compatibilidade)
 export function useEstoque() {
   const context = useContext(EstoqueContext);
   if (!context) {
@@ -418,7 +485,7 @@ export function useEstoque() {
   };
 }
 
-// Utilitários de cálculo
+// Utilitários de cálculo (mantidos)
 export const calcularEstatisticas = (produtos: Produto[], vendas: Venda[]) => {
   const totalProdutos = produtos.length;
   const produtosAtivos = produtos.filter(p => p.ativo).length;

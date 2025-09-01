@@ -1,7 +1,8 @@
 import { useState, useCallback, Suspense, lazy } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { EstoqueProvider } from './utils/EstoqueContext';
+import { EstoqueProvider } from './utils/EstoqueContextSupabase';
 import { ToastProvider } from './components/ToastProvider';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useAuth } from './hooks/useAuth';
 import Login from './components/Login';
 import AuthenticatedHeader from './components/AuthenticatedHeader';
@@ -104,9 +105,10 @@ export default function App() {
 
   // Se estiver autenticado, mostrar o sistema principal
   return (
-    <ToastProvider>
-      <EstoqueProvider>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <ErrorBoundary>
+      <ToastProvider>
+        <EstoqueProvider>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
         {/* Container principal otimizado para mobile */}
         <div className="w-full max-w-7xl mx-auto p-3 sm:p-4 lg:p-6">
           
@@ -200,9 +202,10 @@ export default function App() {
               );
             })}
           </Tabs>
+          </div>
         </div>
-      </div>
-      </EstoqueProvider>
-    </ToastProvider>
+        </EstoqueProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
