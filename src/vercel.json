@@ -1,14 +1,11 @@
 {
   "version": 2,
-  "framework": "vite",
-  "buildCommand": "vite build",
+  "framework": "nextjs",
   "installCommand": "npm ci --legacy-peer-deps --no-audit --no-fund",
-  "outputDirectory": "dist",
   "cleanUrls": true,
-  "trailingSlash": false,
+  "trailingSlash": true,
   "buildEnv": {
     "NODE_ENV": "production",
-    "VITE_BUILD_ENV": "vercel",
     "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
   },
   "env": {
@@ -18,15 +15,11 @@
   "regions": ["iad1"],
   "headers": [
     {
-      "source": "/assets/(.*)",
+      "source": "/_next/static/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
         }
       ]
     },
@@ -59,22 +52,6 @@
           "value": "1; mode=block"
         }
       ]
-    },
-    {
-      "source": "/index.html",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
-      ]
     }
-  ],
-  "rewrites": [
-    {
-      "source": "/((?!api).*)",
-      "destination": "/index.html"
-    }
-  ],
-  "redirects": []
+  ]
 }
