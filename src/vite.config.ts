@@ -19,6 +19,7 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     minify: 'esbuild',
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -26,11 +27,10 @@ export default defineConfig({
           ui: ['@radix-ui/react-tabs', '@radix-ui/react-dialog', '@radix-ui/react-select'],
           charts: ['recharts'],
           icons: ['lucide-react']
-        }
-      },
-      external: (id) => {
-        // Excluir qualquer coisa relacionada ao Supabase ou JSR
-        return id.includes('supabase') || id.includes('jsr:') || id.includes('@supabase')
+        },
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js'
       }
     },
     chunkSizeWarningLimit: 1000,

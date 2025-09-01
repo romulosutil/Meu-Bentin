@@ -1,12 +1,13 @@
 {
-  "framework": "vite",
-  "buildCommand": "npm run vercel-build",
-  "installCommand": "npm ci --legacy-peer-deps --no-package-lock --prefer-offline",
+  "framework": null,
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci --legacy-peer-deps",
   "outputDirectory": "dist",
   "cleanUrls": true,
   "trailingSlash": false,
   "buildEnv": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "VITE_BUILD_ENV": "vercel"
   },
   "env": {
     "NODE_ENV": "production"
@@ -23,6 +24,19 @@
         {
           "key": "X-Content-Type-Options",
           "value": "nosniff"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     }
