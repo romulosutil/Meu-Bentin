@@ -1,7 +1,7 @@
 {
   "name": "meu-bentin-gestao",
   "version": "1.0.0", 
-  "description": "Sistema de gestão completo para loja infantil Meu Bentin - 100% localStorage",
+  "description": "Sistema de gestão completo para loja infantil Meu Bentin",
   "type": "module",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "lint": "echo 'No linting configured'",
     "test": "echo 'No tests configured'",
-    "validate": "npm ls && echo 'Todas as dependências válidas!'",
+    "validate": "npm ls --depth=0",
     "clean": "rm -rf node_modules package-lock.json && npm install"
   },
   "dependencies": {
@@ -32,7 +32,8 @@
     "@radix-ui/react-tooltip": "^1.0.7",
     "@radix-ui/react-toast": "^1.1.5",
     "@radix-ui/react-separator": "^1.0.3",
-    "@radix-ui/react-slot": "^1.0.2"
+    "@radix-ui/react-slot": "^1.0.2",
+    "motion": "^10.16.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
@@ -48,23 +49,16 @@
     "react",
     "typescript", 
     "tailwindcss",
-    "gestao",
+    "gestao-loja",
     "estoque",
     "vendas",
-    "loja-infantil",
-    "meu-bentin",
-    "localStorage",
-    "sem-backend"
+    "meu-bentin"
   ],
   "author": "Sistema Meu Bentin",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/usuario/meu-bentin-gestao"
-  },
   "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   },
   "browserslist": [
     "> 0.5%",

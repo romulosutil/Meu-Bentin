@@ -1,209 +1,151 @@
-# 🎈 Sistema de Gestão Meu Bentin
+# Meu Bentin - Sistema de Gestão
 
-[![Deploy no Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SEU-USUARIO/meu-bentin-gestao)
+Sistema completo de gestão para loja infantil com controle de estoque, vendas, receita e análise de dados.
 
-Sistema completo de gestão desenvolvido especialmente para **lojas infantis**, com foco em **simplicidade**, **eficiência** e **zero configuração**.
+## 🚀 Tecnologias
 
-## ⚡ Características Principais
+- **React 18** + **TypeScript** 
+- **Tailwind CSS v4** para estilização
+- **Vite** para build e desenvolvimento
+- **Radix UI** para componentes acessíveis
+- **Recharts** para gráficos e visualizações
+- **Motion** para animações suaves
+- **LocalStorage** para persistência de dados
 
-- 🎨 **Design colorido e infantil** baseado no logotipo Meu Bentin
-- 💾 **100% localStorage** - funciona offline, sem backend
-- 📱 **Mobile-first** - responsivo em todos os dispositivos
-- ⚡ **Performance otimizada** - carregamento ultra-rápido
-- 🔒 **Privacidade total** - dados ficam apenas no seu navegador
-- 🚀 **Deploy imediato** - zero configuração necessária
+## ✨ Funcionalidades
 
-## 🚀 Instalação e Uso
+### 📊 Dashboard
+- Visão geral de vendas e estoque
+- Métricas em tempo real
+- Gráficos interativos
 
+### 📦 Estoque
+- Cadastro e edição de produtos
+- Controle de quantidades
+- Gestão de categorias
+- Alertas de estoque baixo
+
+### 💰 Vendas
+- Registro de vendas
+- Seleção de produtos
+- Cálculo automático de totais
+- Diferentes formas de pagamento
+
+### 📈 Receita
+- Análise de faturamento
+- Relatórios por período
+- Comparativo de performance
+
+### 📊 Análise de Dados
+- Produtos mais vendidos
+- Performance por vendedor
+- Tendências de vendas
+- Insights estratégicos
+
+## 🎨 Design System
+
+Sistema baseado nas cores vibrantes da marca Meu Bentin:
+- **Rosa**: `#e91e63` (Primária)
+- **Azul**: `#2196f3` (Secundária)  
+- **Verde**: `#4caf50` (Accent)
+- **Laranja**: `#ff6b35` (Destaque)
+
+## 🔐 Autenticação
+
+Sistema de login seguro com:
+- Sessão de 24 horas
+- Verificação contínua
+- Logout automático
+- Interface infantil e colorida
+
+## 🛠️ Instalação e Uso
+
+### Pré-requisitos
+- Node.js 18+
+- npm 9+
+
+### Desenvolvimento Local
 ```bash
-# Clone o projeto
-git clone https://github.com/SEU-USUARIO/meu-bentin-gestao.git
+# Clone o repositório
+git clone https://github.com/usuario/meu-bentin-gestao.git
+
+# Entre no diretório
 cd meu-bentin-gestao
 
 # Instale as dependências
 npm install
 
-# Execute em desenvolvimento  
+# Execute o servidor de desenvolvimento
 npm run dev
+```
 
-# Build para produção
+### Build para Produção
+```bash
+# Gere o build otimizado
 npm run build
+
+# Visualize o build localmente
+npm run preview
 ```
 
-## ✨ Módulos Funcionais
+## 📱 Responsividade
 
-### 📊 **Dashboard Inteligente**
-- **Métricas em tempo real** - receita, vendas, estoque
-- **Sistema de metas mensais** configuráveis por vendedor
-- **Produtos mais vendidos** com análise detalhada
-- **Alertas de estoque baixo** automáticos
-- **Gráficos interativos** com dados reais
+- ✅ Design mobile-first
+- ✅ Navegação por abas otimizada
+- ✅ Componentes adaptáveis
+- ✅ Tipografia responsiva
 
-### 📦 **Gestão de Estoque**
-- **CRUD completo** - criar, editar, remover produtos
-- **Categorias dinâmicas** - roupas, calçados, acessórios, brinquedos
-- **Controle de quantidades** com alertas de estoque mínimo
-- **Informações detalhadas** - preço, custo, cor, tamanho, marca
-- **Busca e filtros** avançados
+## 🚀 Deploy
 
-### 🛒 **Sistema de Vendas**
-- **Processo completo de vendas** com seleção de produtos
-- **Múltiplas formas de pagamento** - dinheiro, cartão, PIX
-- **Atualização automática do estoque** em tempo real
-- **Histórico detalhado** com filtros por data e vendedor
-- **Sistema de descontos** integrado
+O projeto está configurado para deploy automático na Vercel:
 
-### 💹 **Análise Financeira & Receita**
-- **Relatórios detalhados** de receita por período
-- **Gráficos interativos** - receita diária, mensal, anual
-- **Análise por vendedor** e categoria
-- **Configuração de metas** com acompanhamento automático
-- **Dashboard financeiro** com KPIs importantes
+1. **GitHub**: Faça push das alterações
+2. **Vercel**: Deploy automático a partir do repositório
+3. **Configurações**: Já otimizadas no `vercel.json`
 
-## 🎨 Design System Meu Bentin
+### Variáveis de Ambiente
+Não são necessárias para a versão atual com localStorage.
 
-**Baseado nas cores vibrantes do logotipo:**
-
-| Cor | Hex | Uso |
-|-----|-----|-----|
-| 🌸 **Rosa Vibrante** | `#e91e63` | Botões primários, destaques |
-| 🔵 **Azul Definido** | `#2196f3` | Links, informações |
-| 🟢 **Verde Definido** | `#4caf50` | Sucessos, confirmações |
-| 🟠 **Laranja Vibrante** | `#ff6b35` | Alertas, call-to-actions |
-
-## 💾 Persistência de Dados
-
-**Todos os dados são salvos no `localStorage` do navegador:**
-
-```typescript
-// Chaves utilizadas
-meu-bentin-produtos     // Lista de produtos
-meu-bentin-vendas       // Histórico de vendas
-meu-bentin-categorias   // Categorias personalizadas
-meu-bentin-vendedores   // Lista de vendedores
-meu-bentin-metas        // Metas mensais configuradas
-```
-
-**Vantagens:**
-- ✅ **Zero configuração** - funciona imediatamente
-- ✅ **Funciona offline** - sem dependência de internet
-- ✅ **Dados privados** - ficam apenas no seu computador
-- ✅ **Performance máxima** - acesso instantâneo
-- ✅ **Backup simples** - exportação de dados disponível
-
-## 🛠️ Tecnologias Utilizadas
-
-- ⚛️ **React 18.2** + TypeScript - Interface reativa e tipada
-- ⚡ **Vite 4.4** - Build ultra-rápido e hot reload
-- 🎨 **Tailwind CSS v4** - Design system moderno
-- 🧩 **Radix UI** - Componentes acessíveis e profissionais
-- 📊 **Recharts** - Gráficos interativos e responsivos
-- 🎯 **Lucide React** - Ícones modernos e consistentes
-
-## 📊 Performance & Qualidade
-
-| Métrica | Valor |
-|---------|--------|
-| **Bundle Size** | ~300KB gzipped |
-| **First Paint** | < 2 segundos |
-| **Lighthouse Score** | 95+ |
-| **Mobile Performance** | Otimizado |
-| **Acessibilidade** | WCAG AA |
-
-## 📁 Estrutura do Projeto
+## 🏗️ Estrutura do Projeto
 
 ```
-meu-bentin-gestao/
-├── App.tsx                 # 🎯 Componente principal com navegação
-├── components/            # 🧩 Componentes React
-│   ├── Dashboard.tsx      #   📊 Painel principal com métricas
-│   ├── Estoque.tsx        #   📦 Gestão completa de produtos
-│   ├── Vendas.tsx         #   🛒 Sistema de vendas integrado
-│   ├── Receita.tsx        #   💰 Análise financeira detalhada
-│   ├── AnaliseData.tsx    #   📈 Business Intelligence
-│   └── ui/                #   🎨 Componentes shadcn/ui
-├── utils/                 # 🔧 Utilitários e contexto
-│   ├── EstoqueContext.tsx #   🏪 Contexto principal do sistema
-│   ├── localStorage.ts    #   💾 Gerenciamento de dados local
-│   ├── validation.ts      #   ✅ Validações de formulários
-│   └── performance.ts     #   ⚡ Otimizações de performance
-├── styles/               # 🎨 Design system personalizado
-│   └── globals.css       #   🌈 Tema Meu Bentin completo
-└── hooks/                # 🪝 Hooks customizados
-    ├── useResponsive.ts  #   📱 Hook para responsividade
-    └── useToast.ts       #   🔔 Sistema de notificações
+├── components/          # Componentes React
+│   ├── ui/             # Componentes de UI (Radix UI)
+│   ├── Dashboard.tsx   # Tela principal
+│   ├── Estoque.tsx     # Gestão de estoque
+│   ├── Vendas.tsx      # Sistema de vendas
+│   ├── Receita.tsx     # Análise de receita
+│   └── AnaliseData.tsx # Análises avançadas
+├── hooks/              # Hooks personalizados
+├── utils/              # Utilitários e contextos
+├── styles/             # Estilos globais (CSS)
+└── App.tsx             # Componente principal
 ```
 
-## 🎯 Ideal Para
+## 🔧 Scripts Disponíveis
 
-✅ **Pequenos empreendedores brasileiros**  
-✅ **Lojas infantis e familiares**  
-✅ **Negócios que precisam de gestão simples**  
-✅ **Quem quer começar sem complicações técnicas**  
-✅ **Estabelecimentos com vendas presenciais**  
+- `npm run dev` - Servidor de desenvolvimento
+- `npm run build` - Build para produção
+- `npm run preview` - Preview do build
+- `npm run validate` - Validar dependências
+- `npm run clean` - Limpar node_modules
 
-## 🚀 Deploy Instantâneo
+## 📄 Licença
 
-### Vercel (Recomendado)
-```bash
-# Via CLI
-npm i -g vercel
-vercel --prod
+MIT License - veja [LICENSE](LICENSE) para detalhes.
 
-# Ou conecte seu repositório GitHub no painel da Vercel
-```
+## 🤝 Contribuição
 
-### Netlify
-```bash
-# Via CLI
-npm i -g netlify-cli
-netlify deploy --prod --dir=dist
-```
+1. Fork o projeto
+2. Crie uma branch para sua feature
+3. Commit suas mudanças
+4. Push para a branch
+5. Abra um Pull Request
 
-### GitHub Pages
-```bash
-# Configure o workflow automático no .github/workflows/
-npm run build
-# Push para o branch main
-```
+## 📞 Contato
 
-## 🔄 Atualizações e Melhorias
-
-O sistema está em constante evolução com base no feedback dos usuários:
-
-- 🔄 **Atualizações regulares** com novas funcionalidades
-- 🐛 **Correções rápidas** de bugs reportados
-- 📱 **Melhorias de UX/UI** contínuas
-- ⚡ **Otimizações de performance** constantes
-
-## 📞 Suporte
-
-- 📧 **Email:** [seu-email]
-- 💬 **Issues:** Use o sistema de issues do GitHub
-- 📱 **WhatsApp:** [seu-whatsapp]
-- 📚 **Documentação:** Sempre atualizada neste README
+Para suporte e dúvidas sobre o sistema Meu Bentin.
 
 ---
 
-## 🏆 Por que escolher o Sistema Meu Bentin?
-
-> **"Desenvolvido por empreendedores, para empreendedores"**
-
-1. 🎯 **Foco total** no segmento infantil brasileiro
-2. 💰 **Custo zero** - sem mensalidades ou taxas
-3. ⚡ **Implementação imediata** - funciona em minutos
-4. 🔒 **Seus dados são seus** - privacidade garantida
-5. 📱 **Funciona em qualquer dispositivo** - computador, tablet, celular
-6. 🎨 **Interface alegre e intuitiva** - feita para o público infantil
-
-**🎉 Transforme sua loja infantil em um negócio organizado e eficiente hoje mesmo!**
-
----
-
-**🚀 Sistema Meu Bentin - Gestão Descomplicada para Lojas Infantis**
-
-*Desenvolvido com ❤️ para facilitar a vida de pequenos empreendedores brasileiros*
-
-📄 **Licença:** MIT  
-⭐ **Versão:** 1.0.0  
-🔄 **Última atualização:** Setembro 2025
+**Meu Bentin** - Sistema de gestão infantil completo 🎈
