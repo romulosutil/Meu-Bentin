@@ -17,13 +17,16 @@ export default defineConfig({
   },
 
   build: {
-    outDir: 'dist',
+    outDir: path.resolve(__dirname, 'dist'),
     sourcemap: false,
     minify: 'esbuild',
     emptyOutDir: true,
     assetsDir: 'assets',
     rollupOptions: {
       output: {
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: {
           vendor: ['react', 'react-dom'],
           ui: ['@radix-ui/react-tabs', '@radix-ui/react-dialog', '@radix-ui/react-select', '@radix-ui/react-checkbox'],

@@ -24,6 +24,9 @@ guidelines/
 deploy-check.js
 build-verify.js
 *.config.local.js
+vite.config.prod.ts
+tailwind_backup.txt
+temp_backup.txt
 
 # Testes
 __tests__/
