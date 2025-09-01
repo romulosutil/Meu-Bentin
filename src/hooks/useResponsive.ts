@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { debounce } from '../utils/performance';
 
 interface ResponsiveState {
   isMobile: boolean;
@@ -7,25 +6,15 @@ interface ResponsiveState {
   isDesktop: boolean;
   screenWidth: number;
   screenHeight: number;
-  orientation: 'portrait' | 'landscape';
-  isTouch: boolean;
 }
 
 export const useResponsive = (): ResponsiveState => {
-  const [state, setState] = useState<ResponsiveState>(() => {
-    const width = typeof window !== 'undefined' ? window.innerWidth : 1024;
-    const height = typeof window !== 'undefined' ? window.innerHeight : 768;
-    
-    return {
-      isMobile: width < 768,
-      isTablet: width >= 768 && width < 1024,
-      isDesktop: width >= 1024,
-      screenWidth: width,
-      screenHeight: height,
-      orientation: height > width ? 'portrait' : 'landscape',
-      isTouch: typeof window !== 'undefined' ? 
-        ('ontouchstart' in window || navigator.maxTouchPoints > 0) : false,
-    };
+  const [state, setState] = useState<ResponsiveState>({
+    isMobile: false,
+    isTablet: false,
+    isDesktop: true,
+    screenWidth: typeof window !== 'undefined' ? window.innerWidth : 1024,
+    screenHeight: typeof window !== 'undefined' ? window.innerHeight : 768,
   });
 
   useEffect(() => {
@@ -39,39 +28,56 @@ export const useResponsive = (): ResponsiveState => {
         isDesktop: width >= 1024,
         screenWidth: width,
         screenHeight: height,
-        orientation: height > width ? 'portrait' : 'landscape',
-        isTouch: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
       });
     };
 
-    // Debounced update para melhor performance
-    const debouncedUpdate = debounce(updateState, 150);
+    // Atualizar estado inicial
+    updateState();
+
+    // Listener para mudanças de tamanho com debounce
+    let timeoutId: NodeJS.Timeout;
+    const debouncedUpdate = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(updateState, 150);
+    };
 
     window.addEventListener('resize', debouncedUpdate);
-    window.addEventListener('orientationchange', debouncedUpdate);
     
     // Cleanup
     return () => {
       window.removeEventListener('resize', debouncedUpdate);
-      window.removeEventListener('orientationchange', debouncedUpdate);
+      clearTimeout(timeoutId);
     };
   }, []);
 
   return state;
 };
 
-// Hooks simplificados baseados no useResponsive principal
-export const useMobile = (): boolean => {
-  const { isMobile } = useResponsive();
-  return isMobile;
-};
+// Hook para orientação do dispositivo
+export const useOrientation = () => {
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
 
-export const useOrientation = (): 'portrait' | 'landscape' => {
-  const { orientation } = useResponsive();
+  useEffect(() => {
+    const updateOrientation = () => {
+      setOrientation(window.innerHeight > window.innerWidth ? 'portrait' : 'landscape');
+    };
+
+    updateOrientation();
+    window.addEventListener('resize', updateOrientation);
+    
+    return () => window.removeEventListener('resize', updateOrientation);
+  }, []);
+
   return orientation;
 };
 
-export const useTouchDevice = (): boolean => {
-  const { isTouch } = useResponsive();
+// Hook para detectar se é um dispositivo touch
+export const useTouchDevice = () => {
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
+
   return isTouch;
 };

@@ -226,24 +226,33 @@
     -webkit-overflow-scrolling: touch;
   }
   
-  /* Estados de carregamento otimizados */
+  /* Estados de carregamento */
   @keyframes skeleton {
     0% { opacity: 1; }
     50% { opacity: 0.4; }
     100% { opacity: 1; }
   }
   
-  @keyframes pulse-gentle {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-  }
-  
   .skeleton {
     animation: skeleton 2s ease-in-out infinite;
   }
   
-  .pulse-gentle {
-    animation: pulse-gentle 2s ease-in-out infinite;
+  /* Melhorias para textos responsivos */
+  .text-responsive {
+    @apply text-sm sm:text-base;
+  }
+  
+  .text-responsive-lg {
+    @apply text-base sm:text-lg;
+  }
+  
+  /* Espaçamento responsivo */
+  .space-responsive {
+    @apply space-y-3 sm:space-y-4;
+  }
+  
+  .gap-responsive {
+    @apply gap-3 sm:gap-4;
   }
   
   /* Estilos customizados Meu Bentin - melhorado para contraste */
@@ -344,7 +353,7 @@
   .icon-size-lg { @apply h-6 w-6; }
   .icon-size-xl { @apply h-8 w-8; }
   
-  /* Cores otimizadas para ícones */
+  /* Cores específicas para ícones */
   .text-icon-pink { color: var(--icon-pink); }
   .text-icon-blue { color: var(--icon-blue); }
   .text-icon-green { color: var(--icon-green); }
@@ -353,13 +362,13 @@
   .text-icon-teal { color: var(--icon-teal); }
   .text-icon-gray { color: var(--icon-gray); }
   
-  /* Efeitos de interação consolidados */
-  .interactive-hover {
-    @apply hover:scale-105 hover:drop-shadow-md transition-all duration-200;
+  /* Efeitos visuais para ícones */
+  .icon-glow {
+    @apply drop-shadow-sm hover:drop-shadow-md transition-all duration-200;
   }
   
-  .interactive-bounce {
-    @apply hover:scale-110 active:scale-95 transition-transform duration-150;
+  .icon-bounce {
+    @apply hover:scale-110 transition-transform duration-200;
   }
 }
 

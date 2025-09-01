@@ -1,4 +1,118 @@
-// Utilitários otimizados de performance
+// Utilitários para monitoramento de performance e analytics
+
+export interface PerformanceMetrics {
+  pageLoadTime: number;
+  componentRenderTime: number;
+  memoryUsage?: number;
+  userInteractions: number;
+  errors: number;
+}
+
+class PerformanceMonitor {
+  private metrics: PerformanceMetrics = {
+    pageLoadTime: 0,
+    componentRenderTime: 0,
+    memoryUsage: 0,
+    userInteractions: 0,
+    errors: 0
+  };
+
+  private startTimes: Map<string, number> = new Map();
+
+  // Iniciar medição de tempo
+  startTimer(label: string): void {
+    this.startTimes.set(label, performance.now());
+  }
+
+  // Finalizar medição de tempo
+  endTimer(label: string): number {
+    const startTime = this.startTimes.get(label);
+    if (!startTime) {
+      console.warn(`Timer "${label}" não foi iniciado`);
+      return 0;
+    }
+
+    const duration = performance.now() - startTime;
+    this.startTimes.delete(label);
+    
+    // Atualizar métricas específicas
+    if (label === 'pageLoad') {
+      this.metrics.pageLoadTime = duration;
+    } else if (label.includes('component')) {
+      this.metrics.componentRenderTime += duration;
+    }
+
+    return duration;
+  }
+
+  // Registrar interação do usuário
+  recordInteraction(): void {
+    this.metrics.userInteractions++;
+  }
+
+  // Registrar erro
+  recordError(): void {
+    this.metrics.errors++;
+  }
+
+  // Obter uso de memória (se disponível)
+  getMemoryUsage(): number {
+    if ('memory' in performance) {
+      const memory = (performance as any).memory;
+      return memory.usedJSHeapSize / 1024 / 1024; // MB
+    }
+    return 0;
+  }
+
+  // Obter métricas atuais
+  getMetrics(): PerformanceMetrics {
+    return {
+      ...this.metrics,
+      memoryUsage: this.getMemoryUsage()
+    };
+  }
+
+  // Reset métricas
+  reset(): void {
+    this.metrics = {
+      pageLoadTime: 0,
+      componentRenderTime: 0,
+      memoryUsage: 0,
+      userInteractions: 0,
+      errors: 0
+    };
+    this.startTimes.clear();
+  }
+
+  // Relatório de performance
+  generateReport(): string {
+    const metrics = this.getMetrics();
+    return `
+Performance Report:
+- Page Load Time: ${metrics.pageLoadTime.toFixed(2)}ms
+- Component Render Time: ${metrics.componentRenderTime.toFixed(2)}ms
+- Memory Usage: ${metrics.memoryUsage?.toFixed(2)}MB
+- User Interactions: ${metrics.userInteractions}
+- Errors: ${metrics.errors}
+    `.trim();
+  }
+}
+
+// Instância global do monitor
+export const performanceMonitor = new PerformanceMonitor();
+
+// Hook para medir performance de componentes
+export const usePerformanceTimer = (componentName: string) => {
+  const startTimer = () => {
+    performanceMonitor.startTimer(`component-${componentName}`);
+  };
+
+  const endTimer = () => {
+    return performanceMonitor.endTimer(`component-${componentName}`);
+  };
+
+  return { startTimer, endTimer };
+};
 
 // Debounce function para otimizar calls
 export const debounce = <T extends (...args: any[]) => any>(
@@ -47,17 +161,27 @@ export const lazyLoadImage = (src: string): Promise<void> => {
   });
 };
 
-// Preload de rota para melhor UX
+// Otimização de bundle
 export const preloadRoute = async (routeComponent: () => Promise<any>) => {
   try {
     await routeComponent();
   } catch (error) {
-    // Log silencioso em produção
-    console.warn('⚠️ Falha ao precarregar rota:', error);
+    console.warn('Falha ao precarregar rota:', error);
   }
 };
 
-// Detecção de dispositivo lento
+// Análise de bundle size
+export const logBundleSize = () => {
+  if (typeof window !== 'undefined' && 'performance' in window) {
+    const entries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+    if (entries.length > 0) {
+      const entry = entries[0];
+      console.log(`Bundle Load Time: ${entry.loadEventEnd - entry.fetchStart}ms`);
+    }
+  }
+};
+
+// Detecção de slow device
 export const isSlowDevice = (): boolean => {
   if (typeof navigator !== 'undefined' && 'hardwareConcurrency' in navigator) {
     return navigator.hardwareConcurrency <= 2;
@@ -75,90 +199,77 @@ export const isSlowConnection = (): boolean => {
 };
 
 // Analytics simplificado
+interface AnalyticsEvent {
+  action: string;
+  category: string;
+  label?: string;
+  value?: number;
+}
+
 class SimpleAnalytics {
-  track(action: string, category?: string): void {
-    // Log básico para analytics
-    console.log(`📊 Analytics: ${action}${category ? ` (${category})` : ''}`);
+  private events: AnalyticsEvent[] = [];
+
+  track(event: AnalyticsEvent): void {
+    this.events.push({
+      ...event,
+      timestamp: Date.now()
+    } as any);
+
+    // Log apenas em desenvolvimento
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Analytics Event:', event);
+    }
   }
 
+  getEvents(): AnalyticsEvent[] {
+    return [...this.events];
+  }
+
+  clearEvents(): void {
+    this.events = [];
+  }
+
+  // Eventos pré-definidos
   trackPageView(page: string): void {
-    this.track('page_view', page);
+    this.track({
+      action: 'page_view',
+      category: 'navigation',
+      label: page
+    });
   }
 
-  trackUserAction(action: string): void {
-    this.track('user_action', action);
+  trackUserAction(action: string, category = 'user_interaction'): void {
+    this.track({
+      action,
+      category
+    });
+    performanceMonitor.recordInteraction();
   }
 
-  trackError(error: string): void {
-    this.track('error', error);
-    console.error('🚨 Analytics Error:', error);
+  trackError(error: string, category = 'error'): void {
+    this.track({
+      action: 'error',
+      category,
+      label: error
+    });
+    performanceMonitor.recordError();
   }
 }
 
 export const analytics = new SimpleAnalytics();
 
-// Helper para logging de erros
-export const logError = (error: Error, context?: string) => {
-  console.error(`🚨 Error${context ? ` [${context}]` : ''}:`, error);
+// Error boundary helper
+export const logError = (error: Error, errorInfo?: any) => {
+  console.error('Error caught by boundary:', error, errorInfo);
   analytics.trackError(error.message);
 };
 
-// Monitores de performance específicos
-export const performanceUtils = {
-  // Medir tempo de execução
-  measure: <T>(label: string, fn: () => T): T => {
-    const start = performance.now();
-    const result = fn();
-    const duration = performance.now() - start;
-    
-    if (duration > 100) {
-      console.warn(`⚠️ Performance: ${label} levou ${duration.toFixed(2)}ms`);
-    }
-    
-    return result;
-  },
-
-  // Medir tempo de execução async
-  measureAsync: async <T>(label: string, fn: () => Promise<T>): Promise<T> => {
-    const start = performance.now();
-    const result = await fn();
-    const duration = performance.now() - start;
-    
-    if (duration > 500) {
-      console.warn(`⚠️ Performance: ${label} (async) levou ${duration.toFixed(2)}ms`);
-    }
-    
-    return result;
-  },
-
-  // Obter uso de memória
-  getMemoryUsage: (): number => {
-    if ('memory' in performance) {
-      const memory = (performance as any).memory;
-      return Math.round(memory.usedJSHeapSize / 1024 / 1024); // MB
-    }
-    return 0;
-  },
-
-  // Log de estatísticas
-  logStats: (): void => {
-    console.log('📊 Performance Stats:', {
-      memoryUsage: `${performanceUtils.getMemoryUsage()}MB`,
-      isSlowDevice: isSlowDevice(),
-      isSlowConnection: isSlowConnection()
-    });
-  }
-};
-
-// Inicialização
+// Initialize performance monitoring
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
+    performanceMonitor.startTimer('pageLoad');
     setTimeout(() => {
-      try {
-        performanceUtils.logStats();
-      } catch {
-        // Silencioso se houver erro
-      }
-    }, 2000);
+      performanceMonitor.endTimer('pageLoad');
+    }, 0);
   });
 }
