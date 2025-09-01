@@ -22,11 +22,12 @@ guidelines/
 
 # Scripts e utilitários de desenvolvimento
 deploy-check.js
-build-verify.js
 *.config.local.js
-vite.config.prod.ts
 tailwind_backup.txt
 temp_backup.txt
+vercel-build.sh
+vercel-deploy-final.sh
+vite.config.unified.ts
 
 # Testes
 __tests__/

@@ -5,15 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "npm run clean:dist && vite build --outDir ./dist",
+    "build": "npm run clean:dist && vite build",
     "preview": "vite preview --host",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "clean": "rm -rf node_modules/.cache dist build .vercel .vite",
-    "clean:dist": "rm -rf dist build",
+    "clean:dist": "rm -rf dist build out .vercel .vite node_modules/.vite",
     "clean:all": "npm run clean && rm -rf node_modules package-lock.json",
     "prebuild": "npm run clean:dist",
     "postbuild": "echo '✅ Build concluído com sucesso! Output: dist/' && ls -la dist/",
-    "vercel-build": "npm run clean:dist && npx vite build --config vite.config.prod.ts && npm run build:verify",
+    "vercel-build": "npm run clean:dist && vite build && npm run build:verify",
     "build:verify": "node build-verify.js"
   },
   "dependencies": {
