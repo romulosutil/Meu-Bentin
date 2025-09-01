@@ -1,11 +1,11 @@
-import { useState, useCallback, Suspense, lazy, memo } from 'react';
+import { useState, useCallback, Suspense, lazy } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { EstoqueProvider } from './utils/EstoqueContext';
 import { AuthProvider, useAuth } from './utils/AuthContext';
 import { ToastProvider } from './components/ToastProvider';
 import { ShoppingBag, Package, DollarSign, TrendingUp, BarChart3, Loader2 } from 'lucide-react';
 
-// Componentes com lazy loading otimizado
+// Lazy loading dos componentes principais
 const LoginForm = lazy(() => import('./components/LoginForm'));
 const UserHeader = lazy(() => import('./components/UserHeader'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -14,206 +14,143 @@ const Vendas = lazy(() => import('./components/Vendas'));
 const Receita = lazy(() => import('./components/Receita'));
 const AnaliseData = lazy(() => import('./components/AnaliseData'));
 
-// Tipos para melhor type safety
-type TabValue = 'dashboard' | 'estoque' | 'vendas' | 'receita' | 'analise';
-
-interface TabConfig {
-  value: TabValue;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  activeColor: string;
-  iconBg: string;
-  iconColor: string;
-  component: React.ComponentType;
-}
-
-const TABS_CONFIG: TabConfig[] = [
+// Configuração das abas
+const TABS = [
   {
-    value: 'dashboard',
+    id: 'dashboard',
     label: 'Dashboard',
     icon: BarChart3,
-    activeColor: 'data-[state=active]:bg-bentin-pink',
-    iconBg: 'from-orange-100 to-orange-200',
-    iconColor: 'text-orange-600 group-data-[state=active]:text-white',
+    color: 'bentin-pink',
     component: Dashboard
   },
   {
-    value: 'estoque',
-    label: 'Estoque',
+    id: 'estoque',
+    label: 'Estoque', 
     icon: Package,
-    activeColor: 'data-[state=active]:bg-bentin-blue',
-    iconBg: 'from-emerald-100 to-emerald-200',
-    iconColor: 'text-emerald-600 group-data-[state=active]:text-white',
+    color: 'bentin-blue',
     component: Estoque
   },
   {
-    value: 'vendas',
+    id: 'vendas',
     label: 'Vendas',
     icon: ShoppingBag,
-    activeColor: 'data-[state=active]:bg-bentin-green',
-    iconBg: 'from-pink-100 to-pink-200',
-    iconColor: 'text-pink-600 group-data-[state=active]:text-white',
+    color: 'bentin-green', 
     component: Vendas
   },
   {
-    value: 'receita',
+    id: 'receita',
     label: 'Receita',
     icon: DollarSign,
-    activeColor: 'data-[state=active]:bg-bentin-orange',
-    iconBg: 'from-blue-100 to-blue-200',
-    iconColor: 'text-blue-600 group-data-[state=active]:text-white',
+    color: 'bentin-orange',
     component: Receita
   },
   {
-    value: 'analise',
+    id: 'analise',
     label: 'Análise',
     icon: TrendingUp,
-    activeColor: 'data-[state=active]:bg-bentin-mint',
-    iconBg: 'from-green-100 to-green-200',
-    iconColor: 'text-green-600 group-data-[state=active]:text-white',
+    color: 'bentin-mint',
     component: AnaliseData
   }
-];
+] as const;
 
-// Componente de Loading otimizado e memoizado
-const LoadingComponent = memo(() => (
-  <div className="flex items-center justify-center py-12 min-h-[200px]">
-    <div className="flex items-center gap-3 bg-white rounded-xl p-4 shadow-sm border border-border/30">
-      <Loader2 className="h-6 w-6 animate-spin text-bentin-pink" />
-      <p className="text-muted-foreground font-medium">Carregando módulo...</p>
+// Loading component otimizado
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <div className="flex items-center gap-3 bg-white rounded-xl p-4 shadow-sm">
+        <Loader2 className="h-6 w-6 animate-spin text-bentin-pink" />
+        <p className="text-muted-foreground font-medium">Carregando...</p>
+      </div>
     </div>
-  </div>
-));
-LoadingComponent.displayName = 'LoadingComponent';
+  );
+}
 
-// Componente principal protegido
-function ProtectedApp() {
+// Componente principal da aplicação
+function MainApp() {
   const { isAuthenticated, login, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabValue>('dashboard');
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value as TabValue);
+    setActiveTab(value);
   }, []);
 
-  // Mostrar tela de login se não estiver autenticado
+  // Tela de login
   if (!isAuthenticated) {
     return (
-      <Suspense fallback={<LoadingComponent />}>
+      <Suspense fallback={<LoadingSpinner />}>
         <LoginForm onLogin={login} isLoading={isLoading} />
       </Suspense>
     );
   }
 
-  // Mostrar aplicação principal se autenticado
+  // Aplicação principal
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
-      {/* Container principal otimizado para mobile */}
-      <div className="w-full max-w-7xl mx-auto p-3 sm:p-4 lg:p-6">
+      <div className="w-full max-w-7xl mx-auto p-4 lg:p-6">
         
-        {/* Header com informações do usuário */}
-        <header className="mb-6 sm:mb-8">
-          <Suspense fallback={
-            <div className="h-20 bg-white/50 rounded-2xl animate-pulse" />
-          }>
+        {/* Header */}
+        <header className="mb-8">
+          <Suspense fallback={<div className="h-20 bg-white/50 rounded-2xl animate-pulse" />}>
             <UserHeader />
           </Suspense>
-          
-          {/* Subtítulo otimizado */}
-          <div className="inline-block">
-            <p className="text-sm sm:text-base text-muted-foreground bg-white/70 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 border border-border/30">
-              Sistema completo de gerenciamento para loja infantil
-            </p>
-          </div>
+          <p className="mt-2 text-muted-foreground bg-white/70 rounded-xl px-4 py-2 border border-border/30 inline-block">
+            Sistema completo de gerenciamento para loja infantil
+          </p>
         </header>
 
-        {/* Navegação por abas otimizada */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 sm:space-y-6">
+        {/* Navegação por abas */}
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           
-          {/* TabsList responsivo */}
-          <TabsList className="w-full bg-white rounded-2xl p-2 sm:p-3 shadow-sm border border-border/50 h-auto">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1 sm:gap-2 w-full">
-              {TABS_CONFIG.map((tab) => {
-                const IconComponent = tab.icon;
-                return (
-                  <TabsTrigger 
-                    key={tab.value}
-                    value={tab.value} 
-                    className={`
-                      bentin-tab-trigger 
-                      flex flex-col sm:flex-row 
-                      items-center justify-center 
-                      gap-1 sm:gap-2 
-                      rounded-xl 
-                      px-2 sm:px-4 
-                      py-2 sm:py-3 
-                      h-auto 
-                      min-h-[50px] sm:min-h-[60px]
-                      text-xs sm:text-sm
-                      ${tab.activeColor}
-                      data-[state=active]:text-white 
-                      transition-all duration-200 
-                      data-[state=active]:shadow-md 
-                      group
-                      ${tab.value === 'analise' ? 'col-span-2 sm:col-span-1' : ''}
-                    `}
-                    aria-label={`Navegar para ${tab.label}`}
-                  >
-                    <div className={`
-                      bentin-tab-icon 
-                      p-1.5 sm:p-2 
-                      rounded-lg 
-                      bg-gradient-to-br 
-                      ${tab.iconBg}
-                      flex-shrink-0 
-                      transition-all duration-200 
-                      group-data-[state=active]:from-white/20 
-                      group-data-[state=active]:to-white/30
-                    `}>
-                      <IconComponent className={`h-4 w-4 sm:h-5 sm:w-5 ${tab.iconColor} transition-colors duration-200`} />
-                    </div>
-                    <span className="font-semibold whitespace-nowrap leading-tight">
-                      {tab.label}
-                    </span>
-                  </TabsTrigger>
-                );
-              })}
+          {/* Lista de abas */}
+          <TabsList className="w-full bg-white rounded-2xl p-3 shadow-sm border border-border/50 h-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 w-full">
+              {TABS.map(({ id, label, icon: Icon, color }) => (
+                <TabsTrigger 
+                  key={id}
+                  value={id}
+                  className={`
+                    flex flex-col sm:flex-row items-center gap-2 
+                    rounded-xl px-4 py-3 h-auto min-h-[60px]
+                    data-[state=active]:bg-${color}
+                    data-[state=active]:text-white
+                    transition-all duration-200
+                    hover:bg-slate-50
+                  `}
+                >
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 group-data-[state=active]:bg-white/20">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <span className="font-semibold text-sm">{label}</span>
+                </TabsTrigger>
+              ))}
             </div>
           </TabsList>
 
-          {/* Conteúdo das abas com lazy loading otimizado */}
-          {TABS_CONFIG.map((tab) => {
-            const Component = tab.component;
-            return (
-              <TabsContent 
-                key={tab.value} 
-                value={tab.value}
-                className="mt-4 sm:mt-6 focus:outline-none"
-                tabIndex={-1}
-              >
-                {/* Renderização condicional para performance - só renderiza tab ativo */}
-                {activeTab === tab.value && (
-                  <div className="animate-in fade-in duration-300">
-                    <Suspense fallback={<LoadingComponent />}>
-                      <Component />
-                    </Suspense>
-                  </div>
-                )}
-              </TabsContent>
-            );
-          })}
+          {/* Conteúdo das abas */}
+          {TABS.map(({ id, component: Component }) => (
+            <TabsContent key={id} value={id} className="mt-6">
+              {activeTab === id && (
+                <div className="animate-in fade-in duration-300">
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <Component />
+                  </Suspense>
+                </div>
+              )}
+            </TabsContent>
+          ))}
         </Tabs>
       </div>
     </div>
   );
 }
 
-// Componente raiz com providers
+// App raiz com providers
 export default function App() {
   return (
     <ToastProvider>
       <AuthProvider>
         <EstoqueProvider>
-          <ProtectedApp />
+          <MainApp />
         </EstoqueProvider>
       </AuthProvider>
     </ToastProvider>
