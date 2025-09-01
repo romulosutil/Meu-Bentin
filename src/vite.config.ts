@@ -1,13 +1,20 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'path'
+
+// ==========================================
+// CONFIGURAÇÃO VITE - MEU BENTIN SISTEMA
+// VERSÃO FINAL - CORRIGIDA PARA DIST
+// ==========================================
 
 export default defineConfig({
   plugins: [react()],
   
+  root: '.',
+  publicDir: 'public',
+  
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './'),
+      '@': '/src',
     },
   },
 
@@ -16,16 +23,31 @@ export default defineConfig({
     'global': 'globalThis'
   },
 
+  // CONFIGURAÇÃO DE BUILD - FORÇANDO DIST
   build: {
+    // CRITICAL: Output DEVE ser 'dist' para Vercel
     outDir: 'dist',
+    
+    // Limpar diretório antes do build
+    emptyOutDir: true,
+    
+    // Configurações de otimização
     sourcemap: false,
     minify: 'esbuild',
-    emptyOutDir: true,
-    assetsDir: 'assets',
     target: 'esnext',
     cssCodeSplit: true,
+    
+    // Assets configuration
+    assetsDir: 'assets',
+    
+    // Rollup options optimized
     rollupOptions: {
+      input: {
+        main: './index.html'
+      },
       output: {
+        dir: 'dist',
+        format: 'es',
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
@@ -33,8 +55,7 @@ export default defineConfig({
           vendor: ['react', 'react-dom'],
           ui: ['@radix-ui/react-tabs', '@radix-ui/react-dialog', '@radix-ui/react-select', '@radix-ui/react-checkbox'],
           charts: ['recharts'],
-          icons: ['lucide-react'],
-          utils: ['./utils/EstoqueContext', './utils/AuthContext']
+          icons: ['lucide-react']
         }
       },
       treeshake: {
@@ -43,6 +64,7 @@ export default defineConfig({
         unknownGlobalSideEffects: false
       }
     },
+    
     chunkSizeWarningLimit: 1000,
     reportCompressedSize: false
   },
@@ -51,6 +73,11 @@ export default defineConfig({
     port: 3000,
     host: true,
     open: true
+  },
+
+  preview: {
+    port: 4173,
+    host: true
   },
 
   optimizeDeps: {

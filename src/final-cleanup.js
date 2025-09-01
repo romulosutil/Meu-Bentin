@@ -18,7 +18,10 @@ const duplicateConfigs = [
   'vercel-deploy-final.sh',
   'build-env.sh',
   'tailwind_backup.txt',
-  'temp_backup.txt'
+  'temp_backup.txt',
+  'build-config.js',
+  'cleanup-configs.js',
+  'deploy-check.js'
 ];
 
 // Documentações duplicadas/desnecessárias
