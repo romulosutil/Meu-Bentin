@@ -2,6 +2,9 @@ import { useState, useCallback, Suspense, lazy } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { EstoqueProvider } from './utils/EstoqueContext';
 import { ToastProvider } from './components/ToastProvider';
+import { useAuth } from './hooks/useAuth';
+import Login from './components/Login';
+import AuthenticatedHeader from './components/AuthenticatedHeader';
 import Dashboard from './components/Dashboard';
 import { ShoppingBag, Package, DollarSign, TrendingUp, BarChart3, Loader2 } from 'lucide-react';
 
@@ -84,11 +87,22 @@ const LoadingComponent = () => (
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabValue>('dashboard');
+  const { isAuthenticated, login } = useAuth();
 
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value as TabValue);
   }, []);
 
+  // Se não estiver autenticado, mostrar tela de login
+  if (!isAuthenticated) {
+    return (
+      <ToastProvider>
+        <Login onLogin={login} />
+      </ToastProvider>
+    );
+  }
+
+  // Se estiver autenticado, mostrar o sistema principal
   return (
     <ToastProvider>
       <EstoqueProvider>
@@ -96,18 +110,10 @@ export default function App() {
         {/* Container principal otimizado para mobile */}
         <div className="w-full max-w-7xl mx-auto p-3 sm:p-4 lg:p-6">
           
-          {/* Header otimizado */}
+          {/* Header com autenticação */}
           <header className="mb-6 sm:mb-8">
             <div className="mb-4 sm:mb-6">
-              {/* Título responsivo */}
-              <div className="text-center sm:text-left">
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-bentin-pink via-bentin-blue to-bentin-green bg-clip-text text-transparent leading-tight">
-                  Sistema de Gestão
-                </h1>
-                <p className="text-xl sm:text-2xl text-slate-600 font-semibold mt-2 sm:mt-3">
-                  Meu Bentin
-                </p>
-              </div>
+              <AuthenticatedHeader />
             </div>
             
             {/* Subtítulo otimizado */}

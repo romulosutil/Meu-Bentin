@@ -46,6 +46,7 @@ deno.lock
 ## 🎯 Status Final - Deploy Pronto
 
 ### ✅ Problemas Resolvidos
+- ✅ Dependência `"npm:hono": "*"` removida manualmente pelo usuário
 - ✅ Dependências malformadas removidas completamente
 - ✅ Códigos Deno/JSR isolados e ignorados no deploy
 - ✅ Package.json 100% compatível com npm/Vercel
@@ -61,8 +62,17 @@ deno.lock
 
 ### 📋 Verificação Final
 ```bash
-npm install  # Deve executar sem erros
-npm run build  # Deve buildar sem problemas
+# Limpar cache e reinstalar para garantir consistência
+npm run clean
+# OU manualmente:
+rm -rf node_modules package-lock.json
+npm install
+
+# Verificar se build funciona
+npm run build
+
+# Validar dependências
+npm run validate
 ```
 
 ### 🔧 Prevenção Futura
