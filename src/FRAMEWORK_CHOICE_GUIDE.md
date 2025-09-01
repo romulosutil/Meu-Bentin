@@ -75,13 +75,11 @@
 - `/tsconfig.json` - TypeScript
 - `/styles/globals.css` - Estilos globais
 - `/components/**` - Todos os componentes
-- `/utils/**` - Utilitários (exceto Supabase)
+- `/utils/**` - Utilitários do sistema
 
 ### 🗑️ Arquivos para REMOVER:
 - `/next.config.js` - Configuração Next.js
 - `/tsconfig.node.json` - Não necessário
-- `/supabase/**` - Documentação Supabase
-- `/utils/supabase/**` - APIs Supabase
 - Documentos MD excessivos
 
 ### 📝 Arquivos para LIMPAR:

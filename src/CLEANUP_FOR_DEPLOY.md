@@ -30,10 +30,9 @@ rm -f next.config.js
 rm -f tsconfig.node.json
 ```
 
-### **Supabase (você vai instalar internamente):**
+### **Arquivos temporários:**
 ```bash
-rm -rf supabase/
-rm -rf utils/supabase/
+rm -f utils/temp_placeholder.txt
 ```
 
 ### **Imports não utilizados:**
@@ -73,7 +72,7 @@ meu-bentin-gestao/
 ├── src/
 │   ├── main.tsx          # Entry point
 ├── components/           # Todos os componentes  
-├── utils/               # Utilitários (sem Supabase)
+├── utils/               # Utilitários do sistema
 ├── styles/              # CSS global
 ├── App.tsx              # Componente principal
 ├── index.html           # HTML base
