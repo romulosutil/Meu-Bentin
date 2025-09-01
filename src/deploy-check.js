@@ -99,8 +99,12 @@ if (fs.existsSync('./package.json')) {
     const problematicDeps = Object.keys(deps).filter(dep => 
       dep.includes('jsr:') || 
       dep.includes('@supabase/') || 
+      dep.includes('supabase') ||
       deps[dep].includes('jsr:') ||
-      dep.startsWith('jsr:')
+      deps[dep].includes('supabase') ||
+      dep.startsWith('jsr:') ||
+      dep.startsWith('@supabase') ||
+      deps[dep].startsWith('jsr:')
     );
     
     if (problematicDeps.length > 0) {

@@ -2,7 +2,9 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "installCommand": "npm ci --only=production",
+  "installCommand": "npm ci --omit=dev",
+  "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
     {
       "source": "/(.*)",
@@ -19,5 +21,12 @@
         }
       ]
     }
+  ],
+  "functions": {},
+  "excludeFiles": [
+    "supabase/**",
+    "guidelines/**",
+    "*.md",
+    "deploy-check.js"
   ]
 }

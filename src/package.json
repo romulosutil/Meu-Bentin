@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run clean-cache && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "clean": "rm -rf node_modules/.vite && rm -rf dist && rm -rf .vercel",
+    "clean-cache": "rm -rf node_modules/.vite && rm -rf node_modules/.cache",
     "deploy-check": "node deploy-check.js",
     "predeploy": "npm run clean && npm run deploy-check && npm run build"
   },

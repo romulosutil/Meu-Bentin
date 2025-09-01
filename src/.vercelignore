@@ -1,7 +1,8 @@
 # Ignorar arquivos e pastas que não devem ser processados pela Vercel
 
-# Pasta do Supabase backend (contém código Deno)
+# Pasta do Supabase backend (contém código Deno) - IGNORAR COMPLETAMENTE
 supabase/
+supabase/**/*
 
 # Arquivos de configuração backend
 *.deno.ts
@@ -37,3 +38,12 @@ deploy-check.js
 
 # Guidelines
 guidelines/
+
+# Node modules cache
+node_modules/
+.npm/
+.cache/
+
+# Build artifacts que podem conter referências problemáticas
+dist/
+.vercel/

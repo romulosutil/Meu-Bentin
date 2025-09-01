@@ -115,3 +115,19 @@ dist/
 # Supabase
 .branches
 .temp
+
+# Package managers lockfiles que podem conter cache problemático
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Mais caches que podem causar problemas
+.next/
+.nuxt/
+.output/
+.vite/
+.rollup.cache/
+
+# Arquivos de build que podem conter referências problemáticas
+build/
+out/

@@ -16,8 +16,15 @@ export default defineConfig({
     minify: 'terser',
     rollupOptions: {
       external: [
-        // Excluir arquivos do Supabase backend do build
-        /^\/supabase\//
+        // Excluir COMPLETAMENTE arquivos do Supabase backend do build
+        /^\/supabase\//,
+        /^\.\/supabase\//,
+        /supabase/,
+        'supabase',
+        '@supabase/supabase-js',
+        // Excluir qualquer referência JSR
+        /^jsr:/,
+        /^npm:.*supabase/
       ],
       output: {
         manualChunks: {
@@ -45,6 +52,10 @@ export default defineConfig({
       'react-dom',
       'lucide-react',
       'recharts'
+    ],
+    exclude: [
+      'supabase',
+      '@supabase/supabase-js'
     ]
   }
 })
