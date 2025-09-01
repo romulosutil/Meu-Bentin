@@ -1,15 +1,14 @@
-import { useState, useCallback, Suspense, lazy } from 'react';
+import { useState, useCallback, Suspense, lazy, memo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { EstoqueProvider } from './utils/EstoqueContext';
 import { AuthProvider, useAuth } from './utils/AuthContext';
 import { ToastProvider } from './components/ToastProvider';
-import LoginForm from './components/LoginForm';
-import UserHeader from './components/UserHeader';
-import Dashboard from './components/Dashboard';
 import { ShoppingBag, Package, DollarSign, TrendingUp, BarChart3, Loader2 } from 'lucide-react';
 
-
-// Lazy loading para componentes pesados
+// Componentes com lazy loading otimizado
+const LoginForm = lazy(() => import('./components/LoginForm'));
+const UserHeader = lazy(() => import('./components/UserHeader'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
 const Estoque = lazy(() => import('./components/Estoque'));
 const Vendas = lazy(() => import('./components/Vendas'));
 const Receita = lazy(() => import('./components/Receita'));
@@ -76,15 +75,16 @@ const TABS_CONFIG: TabConfig[] = [
   }
 ];
 
-// Componente de Loading otimizado
-const LoadingComponent = () => (
+// Componente de Loading otimizado e memoizado
+const LoadingComponent = memo(() => (
   <div className="flex items-center justify-center py-12 min-h-[200px]">
     <div className="flex items-center gap-3 bg-white rounded-xl p-4 shadow-sm border border-border/30">
       <Loader2 className="h-6 w-6 animate-spin text-bentin-pink" />
       <p className="text-muted-foreground font-medium">Carregando módulo...</p>
     </div>
   </div>
-);
+));
+LoadingComponent.displayName = 'LoadingComponent';
 
 // Componente principal protegido
 function ProtectedApp() {
@@ -97,7 +97,11 @@ function ProtectedApp() {
 
   // Mostrar tela de login se não estiver autenticado
   if (!isAuthenticated) {
-    return <LoginForm onLogin={login} isLoading={isLoading} />;
+    return (
+      <Suspense fallback={<LoadingComponent />}>
+        <LoginForm onLogin={login} isLoading={isLoading} />
+      </Suspense>
+    );
   }
 
   // Mostrar aplicação principal se autenticado
@@ -108,7 +112,11 @@ function ProtectedApp() {
         
         {/* Header com informações do usuário */}
         <header className="mb-6 sm:mb-8">
-          <UserHeader />
+          <Suspense fallback={
+            <div className="h-20 bg-white/50 rounded-2xl animate-pulse" />
+          }>
+            <UserHeader />
+          </Suspense>
           
           {/* Subtítulo otimizado */}
           <div className="inline-block">
@@ -172,7 +180,7 @@ function ProtectedApp() {
             </div>
           </TabsList>
 
-          {/* Conteúdo das abas com lazy loading */}
+          {/* Conteúdo das abas com lazy loading otimizado */}
           {TABS_CONFIG.map((tab) => {
             const Component = tab.component;
             return (
@@ -182,7 +190,7 @@ function ProtectedApp() {
                 className="mt-4 sm:mt-6 focus:outline-none"
                 tabIndex={-1}
               >
-                {/* Renderização condicional para performance */}
+                {/* Renderização condicional para performance - só renderiza tab ativo */}
                 {activeTab === tab.value && (
                   <div className="animate-in fade-in duration-300">
                     <Suspense fallback={<LoadingComponent />}>
