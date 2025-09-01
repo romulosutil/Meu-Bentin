@@ -1,7 +1,11 @@
-import { supabase, isSupabaseAvailable, isSupabaseConfigured, testSupabaseConnection } from '../supabase/client'
 import { AUTH_CONFIG } from '../local/constants'
-import { isSupabaseIntegrated } from '../supabase/info'
 import { isDevelopment } from '../env'
+
+// Mock das funções do Supabase para build sem dependências
+const isSupabaseAvailable = async () => false
+const isSupabaseConfigured = () => false
+const testSupabaseConnection = async () => ({ connected: false, message: 'Build mode - localStorage only' })
+const isSupabaseIntegrated = false
 
 // Interface para operações de storage híbrido
 export interface HybridStorageService {
@@ -52,98 +56,26 @@ class LocalStorageService implements HybridStorageService {
   }
 }
 
-// Implementação Supabase
+// Mock da implementação Supabase (desabilitada para build)
 class SupabaseStorageService implements HybridStorageService {
   async get(key: string): Promise<any> {
-    try {
-      const { data, error } = await supabase
-        .from('meu_bentin_storage')
-        .select('value')
-        .eq('key', key)
-        .single()
-      
-      if (error) {
-        if (error.code === 'PGRST116') { // Não encontrado
-          return null
-        }
-        throw error
-      }
-      
-      return data?.value || null
-    } catch (error) {
-      console.error('Erro ao ler Supabase:', error)
-      throw error
-    }
+    throw new Error('Supabase desabilitado para build')
   }
 
   async set(key: string, value: any): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('meu_bentin_storage')
-        .upsert({
-          key,
-          value,
-          updated_at: new Date().toISOString()
-        })
-      
-      if (error) throw error
-    } catch (error) {
-      console.error('Erro ao salvar Supabase:', error)
-      throw error
-    }
+    throw new Error('Supabase desabilitado para build')
   }
 
   async remove(key: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('meu_bentin_storage')
-        .delete()
-        .eq('key', key)
-      
-      if (error) throw error
-    } catch (error) {
-      console.error('Erro ao remover Supabase:', error)
-      throw error
-    }
+    throw new Error('Supabase desabilitado para build')
   }
 
   async getMultiple(keys: string[]): Promise<any[]> {
-    try {
-      const { data, error } = await supabase
-        .from('meu_bentin_storage')
-        .select('key, value')
-        .in('key', keys)
-      
-      if (error) throw error
-      
-      // Organizar resultados na ordem correta
-      return keys.map(key => {
-        const item = data?.find(d => d.key === key)
-        return item?.value || null
-      })
-    } catch (error) {
-      console.error('Erro ao ler múltiplos Supabase:', error)
-      throw error
-    }
+    throw new Error('Supabase desabilitado para build')
   }
 
   async setMultiple(items: Array<{ key: string; value: any }>): Promise<void> {
-    try {
-      const supabaseItems = items.map(item => ({
-        key: item.key,
-        value: item.value,
-        updated_at: new Date().toISOString()
-      }))
-      
-      const { error } = await supabase
-        .from('meu_bentin_storage')
-        .upsert(supabaseItems)
-      
-      if (error) throw error
-    } catch (error) {
-      console.error('Erro ao salvar múltiplos Supabase:', error)
-      throw error
-    }
+    throw new Error('Supabase desabilitado para build')
   }
 }
 

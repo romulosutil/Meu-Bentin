@@ -1,6 +1,7 @@
 {
   "framework": "vite",
   "buildCommand": "npm run build",
+  "installCommand": "npm install --ignore-scripts --no-package-lock",
   "outputDirectory": "dist",
   "cleanUrls": true,
   "trailingSlash": false,

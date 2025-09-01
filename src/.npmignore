@@ -1,0 +1,43 @@
+# ==========================================
+# NPM IGNORE - MEU BENTIN
+# ==========================================
+
+# Pasta Supabase (contém código Deno com JSR)
+supabase/
+supabase/**/*
+
+# Arquivos de desenvolvimento
+.env.local
+.env.development.local
+*.local
+
+# Arquivos de configuração local
+.vercel/
+.cache/
+tmp/
+temp/
+
+# Documentação
+*.md
+guidelines/
+
+# Testes
+__tests__/
+*.test.*
+*.spec.*
+
+# Scripts de desenvolvimento
+deploy-check.js
+
+# Build artifacts
+dist/
+node_modules/
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Logs
+*.log
+logs/
