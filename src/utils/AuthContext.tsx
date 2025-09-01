@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { AUTH_CONFIG } from './local/constants';
+import { storage, STORAGE_KEYS } from './storage/hybridStorage';
 
 interface User {
   id: string;
@@ -19,64 +21,59 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Verificar se há sessão salva no localStorage
-    if (typeof window !== 'undefined') {
-      const savedSession = localStorage.getItem('meu-bentin-auth');
-      return !!savedSession;
-    }
-    return false;
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Verificar sessão existente no carregamento
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedSession = localStorage.getItem('meu-bentin-auth');
-      if (savedSession) {
+    const checkSession = async () => {
+      if (typeof window !== 'undefined') {
         try {
-          const sessionData = JSON.parse(savedSession);
-          const now = new Date().getTime();
-          
-          // Verificar se a sessão não expirou (24 horas)
-          if (sessionData.expiresAt > now) {
-            setUser(sessionData.user);
-            setIsAuthenticated(true);
-          } else {
-            // Sessão expirada, limpar
-            localStorage.removeItem('meu-bentin-auth');
-            setIsAuthenticated(false);
+          const sessionData = await storage.get(STORAGE_KEYS.AUTH);
+          if (sessionData) {
+            const now = new Date().getTime();
+            
+            // Verificar se a sessão não expirou
+            if (sessionData.expiresAt > now) {
+              setUser(sessionData.user);
+              setIsAuthenticated(true);
+            } else {
+              // Sessão expirada, limpar
+              await storage.remove(STORAGE_KEYS.AUTH);
+              setIsAuthenticated(false);
+            }
           }
         } catch (error) {
           console.error('Erro ao verificar sessão:', error);
-          localStorage.removeItem('meu-bentin-auth');
+          await storage.remove(STORAGE_KEYS.AUTH);
           setIsAuthenticated(false);
         }
       }
-    }
+    };
+
+    checkSession();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
     try {
-      // Simular verificação de credenciais
-      // Em produção, isso seria uma chamada para o Supabase
-      if (email === 'nailanabernardo93@gmail.com' && password === '09082013#P') {
+      // Verificação de credenciais local
+      if (email === AUTH_CONFIG.defaultUser.email && password === AUTH_CONFIG.defaultUser.password) {
         const userData: User = {
           id: '1',
           email: email,
-          name: 'Naila Nabernardo'
+          name: AUTH_CONFIG.defaultUser.name
         };
 
-        // Criar sessão com expiração de 24 horas
+        // Criar sessão com expiração configurada
         const sessionData = {
           user: userData,
           loginAt: new Date().getTime(),
-          expiresAt: new Date().getTime() + (24 * 60 * 60 * 1000) // 24 horas
+          expiresAt: new Date().getTime() + AUTH_CONFIG.sessionDuration
         };
 
-        // Salvar sessão no localStorage
-        localStorage.setItem('meu-bentin-auth', JSON.stringify(sessionData));
+        // Salvar sessão no storage híbrido
+        await storage.set(STORAGE_KEYS.AUTH, sessionData);
         
         setUser(userData);
         setIsAuthenticated(true);
@@ -93,8 +90,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('meu-bentin-auth');
+  const logout = async () => {
+    await storage.remove(STORAGE_KEYS.AUTH);
     setUser(null);
     setIsAuthenticated(false);
   };

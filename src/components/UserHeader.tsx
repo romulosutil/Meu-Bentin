@@ -10,6 +10,7 @@ import {
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { useAuth } from '../utils/AuthContext';
 import { LogOut, User, Shield } from 'lucide-react';
+import SupabaseStatus from './SupabaseStatus';
 
 export default function UserHeader() {
   const { user, logout } = useAuth();
@@ -35,9 +36,12 @@ export default function UserHeader() {
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-bentin-pink via-bentin-blue to-bentin-green bg-clip-text text-transparent leading-tight">
           Sistema de Gestão
         </h1>
-        <p className="text-lg sm:text-xl text-slate-600 font-semibold mt-1 sm:mt-2">
-          Meu Bentin
-        </p>
+        <div className="flex items-center gap-3 mt-1 sm:mt-2">
+          <p className="text-lg sm:text-xl text-slate-600 font-semibold">
+            Meu Bentin
+          </p>
+          <SupabaseStatus />
+        </div>
       </div>
 
       {/* Menu do Usuário */}

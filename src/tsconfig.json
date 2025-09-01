@@ -38,7 +38,13 @@
   "exclude": [
     "node_modules",
     "dist",
-    "build"
+    "build",
+    "supabase/**/*", 
+    "**/supabase/**", 
+    "**/*supabase*", 
+    "**/kv_store.tsx",
+    "deploy-check.js",
+    "guidelines/**"
   ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

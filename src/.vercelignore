@@ -1,12 +1,15 @@
 # Ignorar arquivos e pastas que não devem ser processados pela Vercel
 
-# Pasta do Supabase backend (contém código Deno) - IGNORAR COMPLETAMENTE
+# PASTA SUPABASE - IGNORAR COMPLETAMENTE (contém dependências JSR problemáticas)
 supabase/
 supabase/**/*
+**/supabase/**
+utils/supabase/
 
-# Arquivos de configuração backend
+# Arquivos que podem conter dependências problemáticas
 *.deno.ts
 *.deno.js
+**/kv_store.tsx
 
 # Arquivos temporários
 tmp/
@@ -47,3 +50,8 @@ node_modules/
 # Build artifacts que podem conter referências problemáticas
 dist/
 .vercel/
+
+# Lockfiles que podem ter cache problemático
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

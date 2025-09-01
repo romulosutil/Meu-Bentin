@@ -10,22 +10,15 @@ export default defineConfig({
       '@': path.resolve(__dirname, './'),
     },
   },
+  // Configuração para compatibilidade com process.env em alguns casos
+  define: {
+    'process.env': {}
+  },
   build: {
     outDir: 'dist',
     sourcemap: false,
     minify: 'terser',
     rollupOptions: {
-      external: [
-        // Excluir COMPLETAMENTE arquivos do Supabase backend do build
-        /^\/supabase\//,
-        /^\.\/supabase\//,
-        /supabase/,
-        'supabase',
-        '@supabase/supabase-js',
-        // Excluir qualquer referência JSR
-        /^jsr:/,
-        /^npm:.*supabase/
-      ],
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],

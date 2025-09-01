@@ -21,6 +21,8 @@ import {
   ArrowDownRight,
   Calendar
 } from 'lucide-react';
+import SupabaseStatus from './SupabaseStatus';
+import { isDevelopment } from '../utils/env';
 
 interface Meta {
   id: string;
@@ -264,6 +266,11 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Status da integração Supabase (apenas em desenvolvimento) */}
+      {isDevelopment() && (
+        <SupabaseStatus />
+      )}
+
       {/* Métricas Principais - Grid Responsivo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {metricasCards.map((metrica, index) => {
