@@ -1,56 +1,34 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Configuração otimizada para Meu Bentin Sistema
+  // Configuração simplificada e estável para Meu Bentin
   reactStrictMode: true,
   
-  // Output estático para máxima compatibilidade
+  // Output estático para máxima compatibilidade com Vercel
   output: 'export',
   trailingSlash: true,
   
-  // Otimizações de imagem desabilitadas para export estático
+  // Desabilitar otimizações de imagem para export estático
   images: {
     unoptimized: true
   },
   
-  // Configurações de build otimizadas
+  // Configurações básicas
   poweredByHeader: false,
-  compress: true,
   
-  // Configurações experimentais para performance
-  experimental: {
-    optimizeCss: true,
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-tabs']
+  // Evitar experimental para máxima estabilidade
+  // experimental: {}, // Comentado para evitar problemas
+  
+  // ESLint configuração básica
+  eslint: {
+    // Durante builds, não parar por warnings de ESLint
+    ignoreDuringBuilds: false,
   },
   
-  // Webpack customizations se necessário
-  webpack: (config, { isServer }) => {
-    // Otimizações específicas podem ser adicionadas aqui
-    return config;
-  },
-  
-  // Configuração de ambiente
-  env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
-  },
-  
-  // Headers de segurança básicos
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-        ],
-      },
-    ];
-  },
+  // TypeScript configuração
+  typescript: {
+    // Durante builds, não parar por erros de TypeScript que possamos ter
+    ignoreBuildErrors: false,
+  }
 };
 
 module.exports = nextConfig;

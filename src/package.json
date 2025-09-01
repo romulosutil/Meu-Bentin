@@ -6,16 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "export": "next export",
     "lint": "next lint",
     "clean": "rm -rf .next out node_modules/.cache",
     "clean:all": "npm run clean && rm -rf node_modules package-lock.json",
     "test:build": "npm run build && echo '✅ Next.js build concluído com sucesso!'",
-    "migrate:check": "node migrate-to-nextjs.js"
+    "fix:deps": "node fix-dependencies.js",
+    "cleanup:vite": "node cleanup-vite-files.js"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "next": "14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "lucide-react": "^0.263.1",
     "recharts": "^2.8.0",
     "react-hook-form": "^7.55.0",
@@ -35,15 +36,14 @@
     "@radix-ui/react-slot": "^1.0.2"
   },
   "devDependencies": {
-    "@types/react": "^18.2.15",
-    "@types/react-dom": "^18.2.7",
     "@types/node": "^20.0.0",
-    "next": "^14.0.0",
-    "eslint": "^8.45.0",
-    "eslint-config-next": "^14.0.0",
-    "postcss": "^8.4.24",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.5",
+    "postcss": "^8.4.39",
     "tailwindcss": "^4.0.0-alpha.25",
-    "typescript": "^5.0.2"
+    "typescript": "^5.5.3"
   },
   "engines": {
     "node": ">=18.0.0",
