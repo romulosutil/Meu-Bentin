@@ -1,12 +1,3 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
 # Dependencies
 node_modules
 .pnp
@@ -35,12 +26,23 @@ dist-ssr
 *.sln
 *.sw?
 
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
 # Vercel
 .vercel
 
-# Temporary folders
+# Temporary folders e arquivos
 tmp/
 temp/
+.temp
+.branches
 
 # Coverage directory used by tools like istanbul
 coverage/
@@ -86,10 +88,6 @@ jspm_packages/
 # rollup.js default build output
 dist/
 
-# Uncomment the public line in if your project uses Gatsby
-# https://nextjs.org/blog/next-9-1#public-directory-support
-# public
-
 # Storybook build outputs
 .out
 .storybook-out
@@ -112,6 +110,43 @@ dist/
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
-# Supabase
-.branches
-.temp
+# SUPABASE - COMPLETAMENTE IGNORADO
+supabase/
+**/supabase/
+utils/supabase/
+**/utils/supabase/
+
+# Arquivos de documentação excessiva (manter apenas essenciais)
+*_LIMPEZA*.md
+*_CLEANUP*.md
+*_FINAL*.md
+*_SUPABASE*.md
+*DEPLOY_*.md
+*GITHUB*.md
+*FRAMEWORK*.md
+temp_*.md
+STATUS_*.md
+CHECKLIST_*.md
+PROJETO_*.md
+ESTRUTURA_*.md
+LIMPEZA_*.md
+CHECKLIST_FINAL.md
+CLEANUP_FOR_DEPLOY.md
+DEPLOY_GUIDE.md
+DEPLOY_INSTRUCTIONS.md
+DEPLOY_VIA_GITHUB_DESKTOP.md
+ESTRUTURA_FINAL_LIMPA.md
+FINAL_CLEANUP.md
+FRAMEWORK_CHOICE_GUIDE.md
+GITHUB_CONFIG.md
+STATUS_FINAL_LIMPEZA.md
+PROJETO_LIMPO.md
+temp_cleanup_final.md
+
+# Arquivos temporários do projeto
+utils/temp_*.txt
+utils/clean_*.md
+utils/README.md
+utils/.gitkeep
+components/figma/
+imports/

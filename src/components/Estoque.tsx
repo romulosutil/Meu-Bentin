@@ -288,9 +288,9 @@ const Estoque = () => {
                           <SelectValue placeholder="Selecione uma categoria" />
                         </SelectTrigger>
                         <SelectContent>
-                          {categorias.map(categoria => (
-                            <SelectItem key={categoria.id} value={categoria.nome}>
-                              {categoria.nome}
+                          {categorias.map((categoria, index) => (
+                            <SelectItem key={`categoria-${index}-${categoria}`} value={categoria}>
+                              {categoria}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -495,9 +495,9 @@ const Estoque = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todas as categorias</SelectItem>
-                  {categorias.map(categoria => (
-                    <SelectItem key={categoria.id} value={categoria.nome}>
-                      {categoria.nome}
+                  {categorias.map((categoria, index) => (
+                    <SelectItem key={`filtro-categoria-${index}-${categoria}`} value={categoria}>
+                      {categoria}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -508,11 +508,11 @@ const Estoque = () => {
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="baixo">Baixo</SelectItem>
-                  <SelectItem value="crítico">Crítico</SelectItem>
-                  <SelectItem value="esgotado">Esgotado</SelectItem>
+                  <SelectItem key="status-todos" value="todos">Todos</SelectItem>
+                  <SelectItem key="status-normal" value="normal">Normal</SelectItem>
+                  <SelectItem key="status-baixo" value="baixo">Baixo</SelectItem>
+                  <SelectItem key="status-critico" value="crítico">Crítico</SelectItem>
+                  <SelectItem key="status-esgotado" value="esgotado">Esgotado</SelectItem>
                 </SelectContent>
               </Select>
             </div>

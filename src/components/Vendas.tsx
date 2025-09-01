@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { ScrollArea } from './ui/scroll-area';
-import { useToastContext } from './ToastProvider';
+import { useToast } from './ToastProvider';
 import { validateVenda, validateQuantidade } from '../utils/validation';
 import { 
   Plus, 
@@ -74,7 +74,7 @@ const Vendas = () => {
     adicionarVenda 
   } = useEstoque();
   
-  const { success, error } = useToastContext();
+  const { addToast } = useToast();
   
   // Estados de filtros
   const [filtro, setFiltro] = useState('');
@@ -167,7 +167,11 @@ const Vendas = () => {
   const handleAdicionarVendedor = useCallback(async () => {
     const validation = validateVenda(formVendedor as any);
     if (!validation.isValid) {
-      error('Erro na validação', validation.errors.join(', '));
+      addToast({
+        type: 'error',
+        title: 'Erro na validação',
+        description: validation.errors.join(', ')
+      });
       return;
     }
 
@@ -181,20 +185,32 @@ const Vendas = () => {
         ativo: true
       });
 
-      success('Vendedor adicionado', `${novoVendedor.nome} foi cadastrado com sucesso!`);
+      addToast({
+        type: 'success',
+        title: 'Vendedor adicionado',
+        description: `${novoVendedor.nome} foi cadastrado com sucesso!`
+      });
       setFormVendedor(initialVendedorForm);
       setModalNovoVendedor(false);
     } catch (err) {
-      error('Erro ao cadastrar vendedor', 'Tente novamente.');
+      addToast({
+        type: 'error',
+        title: 'Erro ao cadastrar vendedor',
+        description: 'Tente novamente.'
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [formVendedor, adicionarVendedor, success, error]);
+  }, [formVendedor, adicionarVendedor, addToast]);
 
   // Função para adicionar produto ao carrinho
   const adicionarAoCarrinho = useCallback(() => {
     if (!produtoSelecionado || !quantidadeProduto) {
-      error('Seleção incompleta', 'Selecione um produto e quantidade!');
+      addToast({
+        type: 'error',
+        title: 'Seleção incompleta',
+        description: 'Selecione um produto e quantidade!'
+      });
       return;
     }
 
@@ -206,7 +222,11 @@ const Vendas = () => {
     // Validar quantidade
     const validation = validateQuantidade(quantidadeProduto, produto.quantidade);
     if (!validation.isValid) {
-      error('Quantidade inválida', validation.errors.join(', '));
+      addToast({
+        type: 'error',
+        title: 'Quantidade inválida',
+        description: validation.errors.join(', ')
+      });
       return;
     }
 
@@ -215,7 +235,11 @@ const Vendas = () => {
     if (itemExistente) {
       const novaQuantidade = itemExistente.quantidade + quantidade;
       if (novaQuantidade > produto.quantidade) {
-        error('Estoque insuficiente', 'Quantidade total excede o estoque disponível!');
+        addToast({
+          type: 'error',
+          title: 'Estoque insuficiente',
+          description: 'Quantidade total excede o estoque disponível!'
+        });
         return;
       }
       
@@ -246,19 +270,31 @@ const Vendas = () => {
 
     setProdutoSelecionado('');
     setQuantidadeProduto('');
-    success('Produto adicionado', `${produto.nome} foi adicionado ao carrinho`);
-  }, [produtoSelecionado, quantidadeProduto, produtos, carrinhoItens, success, error]);
+    addToast({
+      type: 'success',
+      title: 'Produto adicionado',
+      description: `${produto.nome} foi adicionado ao carrinho`
+    });
+  }, [produtoSelecionado, quantidadeProduto, produtos, carrinhoItens, addToast]);
 
   // Função para finalizar venda
   const finalizarVenda = useCallback(async () => {
     const validation = validateVenda(formVenda as any);
     if (!validation.isValid) {
-      error('Dados incompletos', validation.errors.join(', '));
+      addToast({
+        type: 'error',
+        title: 'Dados incompletos',
+        description: validation.errors.join(', ')
+      });
       return;
     }
 
     if (carrinhoItens.length === 0) {
-      error('Carrinho vazio', 'Adicione pelo menos um produto!');
+      addToast({
+        type: 'error',
+        title: 'Carrinho vazio',
+        description: 'Adicione pelo menos um produto!'
+      });
       return;
     }
 
@@ -266,7 +302,11 @@ const Vendas = () => {
     try {
       const vendedor = vendedores.find(v => v.id === formVenda.vendedorId);
       if (!vendedor) {
-        error('Vendedor não encontrado', 'Selecione um vendedor válido');
+        addToast({
+          type: 'error',
+          title: 'Vendedor não encontrado',
+          description: 'Selecione um vendedor válido'
+        });
         return;
       }
 
@@ -287,18 +327,26 @@ const Vendas = () => {
         observacoes: formVenda.observacoes.trim()
       });
 
-      success('Venda finalizada', `Venda ${novaVenda.numero} registrada com sucesso!`);
+      addToast({
+        type: 'success',
+        title: 'Venda finalizada',
+        description: `Venda ${novaVenda.numero} registrada com sucesso!`
+      });
       
       // Limpar formulário
       setFormVenda(initialVendaForm);
       setCarrinhoItens([]);
       setModalNovaVenda(false);
     } catch (err) {
-      error('Erro ao finalizar venda', 'Tente novamente.');
+      addToast({
+        type: 'error',
+        title: 'Erro ao finalizar venda',
+        description: 'Tente novamente.'
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [formVenda, carrinhoItens, vendedores, adicionarVenda, success, error]);
+  }, [formVenda, carrinhoItens, vendedores, adicionarVenda, addToast]);
 
   // Funções auxiliares
   const getStatusBadge = useCallback((status: string) => {
@@ -556,11 +604,11 @@ const Vendas = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="hoje">Hoje</SelectItem>
-                  <SelectItem value="7dias">7 dias</SelectItem>
-                  <SelectItem value="30dias">30 dias</SelectItem>
-                  <SelectItem value="90dias">90 dias</SelectItem>
-                  <SelectItem value="mes">Este mês</SelectItem>
+                  <SelectItem key="periodo-hoje" value="hoje">Hoje</SelectItem>
+                  <SelectItem key="periodo-7dias" value="7dias">7 dias</SelectItem>
+                  <SelectItem key="periodo-30dias" value="30dias">30 dias</SelectItem>
+                  <SelectItem key="periodo-90dias" value="90dias">90 dias</SelectItem>
+                  <SelectItem key="periodo-mes" value="mes">Este mês</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -570,10 +618,10 @@ const Vendas = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="concluida">Concluída</SelectItem>
-                  <SelectItem value="pendente">Pendente</SelectItem>
-                  <SelectItem value="cancelada">Cancelada</SelectItem>
+                  <SelectItem key="status-todos" value="todos">Todos</SelectItem>
+                  <SelectItem key="status-concluida" value="concluida">Concluída</SelectItem>
+                  <SelectItem key="status-pendente" value="pendente">Pendente</SelectItem>
+                  <SelectItem key="status-cancelada" value="cancelada">Cancelada</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -583,10 +631,10 @@ const Vendas = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos vendedores</SelectItem>
-                  {vendedores.map(vendedor => (
-                    <SelectItem key={vendedor.id} value={vendedor.id}>
-                      {vendedor.nome}
+                  <SelectItem key="vendedor-todos" value="todos">Todos vendedores</SelectItem>
+                  {vendedores.map((vendedor, index) => (
+                    <SelectItem key={`vendedor-${index}-${vendedor}`} value={vendedor}>
+                      {vendedor}
                     </SelectItem>
                   ))}
                 </SelectContent>

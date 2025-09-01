@@ -44,7 +44,9 @@ interface MetricaCard {
 }
 
 const Dashboard = () => {
-  const { produtos, vendas, perdas } = useEstoque();
+  const { state } = useEstoque();
+  const { produtos = [], vendas = [] } = state;
+  
   const [metas, setMetas] = useState<Meta[]>([]);
   const [novaMeta, setNovaMeta] = useState('');
   const [dialogAberto, setDialogAberto] = useState(false);
@@ -98,37 +100,26 @@ const Dashboard = () => {
     // Vendas do dia
     const vendasHoje = vendas.filter(venda => {
       const dataVenda = new Date(venda.data);
-      return dataVenda.toDateString() === hoje.toDateString() && venda.status === 'concluida';
+      return dataVenda.toDateString() === hoje.toDateString();
     });
     
-    const receitaHoje = vendasHoje.reduce((total, venda) => total + venda.total, 0);
+    const receitaHoje = vendasHoje.reduce((total, venda) => total + venda.precoTotal, 0);
     
     // Vendas do mês
     const vendasMes = vendas.filter(venda => {
       const dataVenda = new Date(venda.data);
-      return dataVenda >= inicioMes && venda.status === 'concluida';
+      return dataVenda >= inicioMes;
     });
     
-    const receitaMes = vendasMes.reduce((total, venda) => total + venda.total, 0);
+    const receitaMes = vendasMes.reduce((total, venda) => total + venda.precoTotal, 0);
     
     // Produtos em estoque
     const produtosEstoque = produtos.reduce((total, produto) => total + produto.quantidade, 0);
-    const produtosBaixoEstoque = produtos.filter(produto => produto.quantidade <= produto.estoqueMinimo);
+    const produtosBaixoEstoque = produtos.filter(produto => produto.quantidade <= produto.minimo);
     
     // Capital de giro (estimativa baseada no estoque)
     const valorEstoque = produtos.reduce((total, produto) => total + (produto.quantidade * produto.preco), 0);
     const capitalGiro = valorEstoque * 0.7;
-    
-    // Perdas do mês
-    const perdasMes = perdas.filter(perda => {
-      const dataPerda = new Date(perda.data);
-      return dataPerda >= inicioMes;
-    });
-    
-    const valorPerdasMes = perdasMes.reduce((total, perda) => {
-      const produto = produtos.find(p => p.id === perda.produtoId);
-      return total + (produto ? produto.preco * perda.quantidade : 0);
-    }, 0);
 
     return {
       receitaHoje,
@@ -136,29 +127,24 @@ const Dashboard = () => {
       produtosEstoque,
       produtosBaixoEstoque: produtosBaixoEstoque.length,
       capitalGiro,
-      valorPerdasMes,
       crescimentoVendas: 12.5
     };
-  }, [produtos, vendas, perdas]);
+  }, [produtos, vendas]);
   
   // Produtos mais vendidos com memoização
   const produtosMaisVendidos = useMemo(() => {
     const contadorProdutos: { [key: string]: { nome: string; quantidade: number; receita: number } } = {};
     
     vendas.forEach(venda => {
-      if (venda.status === 'concluida') {
-        venda.itens.forEach(item => {
-          if (contadorProdutos[item.produtoId]) {
-            contadorProdutos[item.produtoId].quantidade += item.quantidade;
-            contadorProdutos[item.produtoId].receita += item.subtotal;
-          } else {
-            contadorProdutos[item.produtoId] = {
-              nome: item.produto,
-              quantidade: item.quantidade,
-              receita: item.subtotal
-            };
-          }
-        });
+      if (contadorProdutos[venda.produtoId]) {
+        contadorProdutos[venda.produtoId].quantidade += venda.quantidade;
+        contadorProdutos[venda.produtoId].receita += venda.precoTotal;
+      } else {
+        contadorProdutos[venda.produtoId] = {
+          nome: venda.nomeProduto,
+          quantidade: venda.quantidade,
+          receita: venda.precoTotal
+        };
       }
     });
     
@@ -170,11 +156,11 @@ const Dashboard = () => {
   // Alertas de estoque baseados nos dados reais
   const alertasEstoque = useMemo(() => {
     return produtos
-      .filter(produto => produto.quantidade <= produto.estoqueMinimo)
+      .filter(produto => produto.quantidade <= produto.minimo)
       .map(produto => ({
         produto: produto.nome,
         estoque: produto.quantidade,
-        status: produto.quantidade === 0 ? 'critico' : produto.quantidade <= produto.estoqueMinimo / 2 ? 'critico' : 'baixo'
+        status: produto.quantidade === 0 ? 'critico' : produto.quantidade <= produto.minimo / 2 ? 'critico' : 'baixo'
       }))
       .slice(0, 5);
   }, [produtos]);
@@ -242,8 +228,8 @@ const Dashboard = () => {
     {
       title: "Capital de Giro",
       value: `R$ ${metricas.capitalGiro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      change: `-R$ ${metricas.valorPerdasMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em perdas`,
-      changeType: metricas.valorPerdasMes > 0 ? 'negative' : 'neutral',
+      change: "Baseado no valor do estoque",
+      changeType: 'neutral',
       icon: Wallet,
       color: 'text-bentin-mint',
       bgColor: 'border-l-bentin-mint bg-bentin-mint/10'

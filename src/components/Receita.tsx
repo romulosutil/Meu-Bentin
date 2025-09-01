@@ -7,7 +7,7 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { useToastContext } from './ToastProvider';
+import { useToast } from './ToastProvider';
 import { validateMeta } from '../utils/validation';
 import { 
   Calendar, 
@@ -36,7 +36,7 @@ interface CapitalGiro {
 
 const Receita = () => {
   const { vendas, produtos } = useEstoque();
-  const { success, error } = useToastContext();
+  const { addToast } = useToast();
   
   const [periodo, setPeriodo] = useState('30dias');
   const [modalCapitalGiro, setModalCapitalGiro] = useState(false);
@@ -187,7 +187,11 @@ const Receita = () => {
   const configurarCapitalGiro = useCallback(async () => {
     const validation = validateMeta(valorCapitalGiro);
     if (!validation.isValid) {
-      error('Valor inválido', validation.errors.join(', '));
+      addToast({
+        type: 'error',
+        title: 'Valor inválido',
+        description: validation.errors.join(', ')
+      });
       return;
     }
 
@@ -206,15 +210,23 @@ const Receita = () => {
       };
 
       setCapitalGiro(novoCapital);
-      success('Capital de giro configurado', `R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})} definido como capital inicial`);
+      addToast({
+        type: 'success',
+        title: 'Capital de giro configurado',
+        description: `R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})} definido como capital inicial`
+      });
       setValorCapitalGiro('');
       setModalCapitalGiro(false);
     } catch (err) {
-      error('Erro ao configurar capital', 'Tente novamente.');
+      addToast({
+        type: 'error',
+        title: 'Erro ao configurar capital',
+        description: 'Tente novamente.'
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [valorCapitalGiro, success, error]);
+  }, [valorCapitalGiro, addToast]);
 
   const getPeriodoLabel = useCallback((periodo: string) => {
     switch (periodo) {

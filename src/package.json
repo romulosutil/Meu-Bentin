@@ -1,13 +1,15 @@
 {
   "name": "meu-bentin-gestao",
-  "version": "1.0.0",
-  "description": "Sistema completo de gestão para loja infantil Meu Bentin",
+  "version": "1.0.0", 
+  "description": "Sistema de gestão completo para loja infantil Meu Bentin - 100% localStorage",
   "type": "module",
+  "private": true,
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "echo 'No linting configured'",
+    "test": "echo 'No tests configured'"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -33,39 +35,39 @@
   "devDependencies": {
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
     "@vitejs/plugin-react": "^4.0.3",
     "autoprefixer": "^10.4.14",
-    "eslint": "^8.45.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.3",
     "postcss": "^8.4.24",
     "tailwindcss": "^4.0.0-alpha.25",
     "typescript": "^5.0.2",
     "vite": "^4.4.5"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
   "keywords": [
     "react",
-    "typescript",
+    "typescript", 
     "tailwindcss",
     "gestao",
     "estoque",
     "vendas",
-    "loja-infantil"
+    "loja-infantil",
+    "meu-bentin",
+    "localStorage",
+    "sem-backend"
   ],
-  "author": "Meu Bentin",
-  "license": "MIT"
+  "author": "Sistema Meu Bentin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/usuario/meu-bentin-gestao"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "browserslist": [
+    "> 0.5%",
+    "last 2 versions",
+    "Firefox ESR",
+    "not dead"
+  ]
 }

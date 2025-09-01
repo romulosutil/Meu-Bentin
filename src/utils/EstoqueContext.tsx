@@ -1,360 +1,413 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+/**
+ * Contexto principal do Sistema Meu Bentin
+ * 100% localStorage - Zero dependências externas
+ */
 
-// Interfaces compartilhadas
+import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { LocalStorage } from './localStorage';
+
+// Tipos principais
 export interface Produto {
   id: string;
   nome: string;
   categoria: string;
   preco: number;
-  precoPromocional?: number;
-  emPromocao: boolean;
+  custo: number;
   quantidade: number;
-  estoqueMinimo: number;
-  dataCriacao: Date;
-  ultimaAtualizacao: Date;
-}
-
-export interface Categoria {
-  id: string;
-  nome: string;
-}
-
-export interface Vendedor {
-  id: string;
-  nome: string;
-  email: string;
-  telefone: string;
-  comissao: number;
-  dataCadastro: Date;
+  minimo: number;
+  vendedor: string;
+  cor?: string;
+  tamanho?: string;
+  marca?: string;
+  descricao?: string;
   ativo: boolean;
-}
-
-export interface ItemVenda {
-  produtoId: string;
-  produto: string;
-  quantidade: number;
-  precoUnitario: number;
-  subtotal: number;
+  dataAtualizacao: string;
 }
 
 export interface Venda {
   id: string;
-  numero: string;
-  data: Date;
-  cliente: string;
-  vendedorId: string;
+  produtoId: string;
+  nomeProduto: string;
+  quantidade: number;
+  precoUnitario: number;
+  precoTotal: number;
   vendedor: string;
-  itens: ItemVenda[];
-  subtotal: number;
+  categoria: string;
+  formaPagamento: 'dinheiro' | 'cartao-debito' | 'cartao-credito' | 'pix' | 'parcelado';
   desconto: number;
-  total: number;
-  formaPagamento: string;
-  status: 'pendente' | 'concluida' | 'cancelada';
+  data: string;
   observacoes?: string;
 }
 
-export interface RegistroPerda {
+export interface Meta {
   id: string;
-  produtoId: string;
-  quantidade: number;
-  motivo: string;
-  data: Date;
+  mes: string;
+  ano: number;
+  valorMeta: number;
+  vendedor: string;
+  ativa: boolean;
 }
 
-// Context Interface
-interface EstoqueContextType {
-  // Produtos
+export interface EstoqueState {
   produtos: Produto[];
-  adicionarProduto: (produto: Omit<Produto, 'id' | 'dataCriacao' | 'ultimaAtualizacao'>) => void;
-  editarProduto: (id: string, produto: Partial<Produto>) => void;
-  adicionarEstoque: (produtoId: string, quantidade: number) => void;
-  registrarPerda: (produtoId: string, quantidade: number, motivo: string) => void;
-  atualizarEstoquePorVenda: (itens: ItemVenda[]) => void;
-
-  // Categorias
-  categorias: Categoria[];
-  adicionarCategoria: (nome: string) => Categoria;
-
-  // Vendedores
-  vendedores: Vendedor[];
-  adicionarVendedor: (vendedor: Omit<Vendedor, 'id' | 'dataCadastro'>) => Vendedor;
-  editarVendedor: (id: string, vendedor: Partial<Vendedor>) => void;
-
-  // Vendas
   vendas: Venda[];
-  adicionarVenda: (venda: Omit<Venda, 'id' | 'numero' | 'data'>) => Venda;
+  categorias: string[];
+  vendedores: string[];
+  metas: Meta[];
+  loading: boolean;
+  error: string | null;
+}
 
-  // Perdas
-  perdas: RegistroPerda[];
+// Ações do reducer
+type EstoqueAction =
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_PRODUTOS'; payload: Produto[] }
+  | { type: 'ADD_PRODUTO'; payload: Produto }
+  | { type: 'UPDATE_PRODUTO'; payload: Produto }
+  | { type: 'DELETE_PRODUTO'; payload: string }
+  | { type: 'SET_VENDAS'; payload: Venda[] }
+  | { type: 'ADD_VENDA'; payload: Venda }
+  | { type: 'DELETE_VENDA'; payload: string }
+  | { type: 'SET_CATEGORIAS'; payload: string[] }
+  | { type: 'ADD_CATEGORIA'; payload: string }
+  | { type: 'DELETE_CATEGORIA'; payload: string }
+  | { type: 'SET_VENDEDORES'; payload: string[] }
+  | { type: 'ADD_VENDEDOR'; payload: string }
+  | { type: 'DELETE_VENDEDOR'; payload: string }
+  | { type: 'SET_METAS'; payload: Meta[] }
+  | { type: 'ADD_META'; payload: Meta }
+  | { type: 'UPDATE_META'; payload: Meta }
+  | { type: 'DELETE_META'; payload: string };
+
+// Estado inicial
+const initialState: EstoqueState = {
+  produtos: [],
+  vendas: [],
+  categorias: ['Roupas', 'Calçados', 'Acessórios', 'Brinquedos'],
+  vendedores: ['Naila', 'Vendedor 2'],
+  metas: [],
+  loading: false,
+  error: null,
+};
+
+// Reducer
+function estoqueReducer(state: EstoqueState, action: EstoqueAction): EstoqueState {
+  switch (action.type) {
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, loading: false };
+    
+    case 'SET_PRODUTOS':
+      return { ...state, produtos: action.payload };
+    
+    case 'ADD_PRODUTO':
+      return { ...state, produtos: [...state.produtos, action.payload] };
+    
+    case 'UPDATE_PRODUTO':
+      return {
+        ...state,
+        produtos: state.produtos.map(p => 
+          p.id === action.payload.id ? action.payload : p
+        )
+      };
+    
+    case 'DELETE_PRODUTO':
+      return {
+        ...state,
+        produtos: state.produtos.filter(p => p.id !== action.payload)
+      };
+    
+    case 'SET_VENDAS':
+      return { ...state, vendas: action.payload };
+    
+    case 'ADD_VENDA':
+      return { ...state, vendas: [...state.vendas, action.payload] };
+    
+    case 'DELETE_VENDA':
+      return {
+        ...state,
+        vendas: state.vendas.filter(v => v.id !== action.payload)
+      };
+    
+    case 'SET_CATEGORIAS':
+      return { ...state, categorias: action.payload };
+    
+    case 'ADD_CATEGORIA':
+      return {
+        ...state,
+        categorias: [...state.categorias, action.payload]
+      };
+    
+    case 'DELETE_CATEGORIA':
+      return {
+        ...state,
+        categorias: state.categorias.filter(c => c !== action.payload)
+      };
+    
+    case 'SET_VENDEDORES':
+      return { ...state, vendedores: action.payload };
+    
+    case 'ADD_VENDEDOR':
+      return {
+        ...state,
+        vendedores: [...state.vendedores, action.payload]
+      };
+    
+    case 'DELETE_VENDEDOR':
+      return {
+        ...state,
+        vendedores: state.vendedores.filter(v => v !== action.payload)
+      };
+    
+    case 'SET_METAS':
+      return { ...state, metas: action.payload };
+    
+    case 'ADD_META':
+      return { ...state, metas: [...state.metas, action.payload] };
+    
+    case 'UPDATE_META':
+      return {
+        ...state,
+        metas: state.metas.map(m => 
+          m.id === action.payload.id ? action.payload : m
+        )
+      };
+    
+    case 'DELETE_META':
+      return {
+        ...state,
+        metas: state.metas.filter(m => m.id !== action.payload)
+      };
+    
+    default:
+      return state;
+  }
 }
 
 // Context
-const EstoqueContext = createContext<EstoqueContextType | undefined>(undefined);
-
-// Provider Component
-export const EstoqueProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [produtos, setProdutos] = useState<Produto[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('meu-bentin-produtos');
-      return saved ? JSON.parse(saved).map((p: any) => ({
-        ...p,
-        dataCriacao: new Date(p.dataCriacao),
-        ultimaAtualizacao: new Date(p.ultimaAtualizacao)
-      })) : [];
-    }
-    return [];
-  });
-  
-  const [categorias, setCategorias] = useState<Categoria[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('meu-bentin-categorias');
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
-  
-  const [vendedores, setVendedores] = useState<Vendedor[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('meu-bentin-vendedores');
-      return saved ? JSON.parse(saved).map((v: any) => ({
-        ...v,
-        dataCadastro: new Date(v.dataCadastro)
-      })) : [];
-    }
-    return [];
-  });
-  
-  const [vendas, setVendas] = useState<Venda[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('meu-bentin-vendas');
-      return saved ? JSON.parse(saved).map((v: any) => ({
-        ...v,
-        data: new Date(v.data)
-      })) : [];
-    }
-    return [];
-  });
-  
-  const [perdas, setPerdas] = useState<RegistroPerda[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('meu-bentin-perdas');
-      return saved ? JSON.parse(saved).map((p: any) => ({
-        ...p,
-        data: new Date(p.data)
-      })) : [];
-    }
-    return [];
-  });
-
-  // Persistir dados no localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('meu-bentin-produtos', JSON.stringify(produtos));
-    }
-  }, [produtos]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('meu-bentin-categorias', JSON.stringify(categorias));
-    }
-  }, [categorias]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('meu-bentin-vendedores', JSON.stringify(vendedores));
-    }
-  }, [vendedores]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('meu-bentin-vendas', JSON.stringify(vendas));
-    }
-  }, [vendas]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('meu-bentin-perdas', JSON.stringify(perdas));
-    }
-  }, [perdas]);
-
-  // Inicializar dados básicos apenas se não existirem no localStorage
-  useEffect(() => {
-    if (categorias.length === 0) {
-      const categoriasIniciais: Categoria[] = [
-        { id: '1', nome: 'Roupas Infantis' },
-        { id: '2', nome: 'Acessórios' },
-        { id: '3', nome: 'Calçados' },
-      ];
-      setCategorias(categoriasIniciais);
-    }
-
-    if (vendedores.length === 0) {
-      const vendedoresIniciais: Vendedor[] = [
-        {
-          id: '1',
-          nome: 'Vendedor Exemplo',
-          email: 'vendedor@meubentin.com',
-          telefone: '(11) 99999-0000',
-          comissao: 5.0,
-          dataCadastro: new Date(),
-          ativo: true
-        }
-      ];
-      setVendedores(vendedoresIniciais);
-    }
-  }, []);
-
-  // Funções para produtos
-  const adicionarProduto = (novoProduto: Omit<Produto, 'id' | 'dataCriacao' | 'ultimaAtualizacao'>) => {
-    const produto: Produto = {
-      ...novoProduto,
-      id: Date.now().toString(),
-      dataCriacao: new Date(),
-      ultimaAtualizacao: new Date()
-    };
-    setProdutos(prev => [...prev, produto]);
-  };
-
-  const editarProduto = (id: string, dadosAtualizados: Partial<Produto>) => {
-    setProdutos(prev => prev.map(produto => 
-      produto.id === id 
-        ? { ...produto, ...dadosAtualizados, ultimaAtualizacao: new Date() }
-        : produto
-    ));
-  };
-
-  const adicionarEstoque = (produtoId: string, quantidade: number) => {
-    setProdutos(prev => prev.map(produto => 
-      produto.id === produtoId 
-        ? { 
-            ...produto, 
-            quantidade: produto.quantidade + quantidade,
-            ultimaAtualizacao: new Date()
-          }
-        : produto
-    ));
-  };
-
-  const registrarPerda = (produtoId: string, quantidade: number, motivo: string) => {
-    const produto = produtos.find(p => p.id === produtoId);
-    if (!produto || quantidade > produto.quantidade) return;
-
-    // Reduzir estoque
-    setProdutos(prev => prev.map(p => 
-      p.id === produtoId 
-        ? { ...p, quantidade: p.quantidade - quantidade, ultimaAtualizacao: new Date() }
-        : p
-    ));
-
-    // Registrar perda
-    const novaPerda: RegistroPerda = {
-      id: Date.now().toString(),
-      produtoId,
-      quantidade,
-      motivo,
-      data: new Date()
-    };
-    setPerdas(prev => [...prev, novaPerda]);
-  };
-
-  const atualizarEstoquePorVenda = (itens: ItemVenda[]) => {
-    setProdutos(prev => prev.map(produto => {
-      const item = itens.find(i => i.produtoId === produto.id);
-      if (item) {
-        return {
-          ...produto,
-          quantidade: produto.quantidade - item.quantidade,
-          ultimaAtualizacao: new Date()
-        };
-      }
-      return produto;
-    }));
-  };
-
-  // Funções para categorias
-  const adicionarCategoria = (nome: string): Categoria => {
-    const novaCategoria: Categoria = {
-      id: Date.now().toString(),
-      nome
-    };
-    setCategorias(prev => [...prev, novaCategoria]);
-    return novaCategoria;
-  };
-
-  // Funções para vendedores
-  const adicionarVendedor = (novoVendedor: Omit<Vendedor, 'id' | 'dataCadastro'>) => {
-    const vendedor: Vendedor = {
-      ...novoVendedor,
-      id: Date.now().toString(),
-      dataCadastro: new Date()
-    };
-    setVendedores(prev => [...prev, vendedor]);
-    return vendedor;
-  };
-
-  const editarVendedor = (id: string, dadosAtualizados: Partial<Vendedor>) => {
-    setVendedores(prev => prev.map(vendedor => 
-      vendedor.id === id 
-        ? { ...vendedor, ...dadosAtualizados }
-        : vendedor
-    ));
-  };
-
-  // Funções para vendas
-  const adicionarVenda = (novaVenda: Omit<Venda, 'id' | 'numero' | 'data'>) => {
-    const venda: Venda = {
-      ...novaVenda,
-      id: Date.now().toString(),
-      numero: `VD${String(vendas.length + 1).padStart(3, '0')}`,
-      data: new Date()
-    };
-
-    setVendas(prev => [...prev, venda]);
-    
-    // Atualizar estoque automaticamente
-    atualizarEstoquePorVenda(venda.itens);
-    
-    return venda;
-  };
-
-  const contextValue: EstoqueContextType = {
+const EstoqueContext = createContext<{
+  state: EstoqueState;
+  dispatch: React.Dispatch<EstoqueAction>;
+  actions: {
     // Produtos
-    produtos,
-    adicionarProduto,
-    editarProduto,
-    adicionarEstoque,
-    registrarPerda,
-    atualizarEstoquePorVenda,
-
+    adicionarProduto: (produto: Omit<Produto, 'id' | 'dataAtualizacao'>) => Promise<void>;
+    atualizarProduto: (produto: Produto) => Promise<void>;
+    removerProduto: (id: string) => Promise<void>;
+    // Vendas
+    adicionarVenda: (venda: Omit<Venda, 'id'>) => Promise<void>;
+    removerVenda: (id: string) => Promise<void>;
     // Categorias
-    categorias,
-    adicionarCategoria,
-
+    adicionarCategoria: (nome: string) => Promise<void>;
+    removerCategoria: (nome: string) => Promise<void>;
     // Vendedores
-    vendedores,
-    adicionarVendedor,
-    editarVendedor,
+    adicionarVendedor: (nome: string) => Promise<void>;
+    removerVendedor: (nome: string) => Promise<void>;
+    // Metas
+    adicionarMeta: (meta: Omit<Meta, 'id'>) => Promise<void>;
+    atualizarMeta: (meta: Meta) => Promise<void>;
+    removerMeta: (id: string) => Promise<void>;
+    // Utilitários
+    carregarDados: () => Promise<void>;
+    salvarDados: () => Promise<void>;
+  };
+} | null>(null);
+
+// Provider
+export function EstoqueProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(estoqueReducer, initialState);
+
+  // Carregar dados do localStorage
+  const carregarDados = async () => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      
+      const produtos = LocalStorage.load('produtos', []);
+      const vendas = LocalStorage.load('vendas', []);
+      const categorias = LocalStorage.load('categorias', initialState.categorias);
+      const vendedores = LocalStorage.load('vendedores', initialState.vendedores);
+      const metas = LocalStorage.load('metas', []);
+
+      dispatch({ type: 'SET_PRODUTOS', payload: produtos });
+      dispatch({ type: 'SET_VENDAS', payload: vendas });
+      dispatch({ type: 'SET_CATEGORIAS', payload: categorias });
+      dispatch({ type: 'SET_VENDEDORES', payload: vendedores });
+      dispatch({ type: 'SET_METAS', payload: metas });
+      
+      dispatch({ type: 'SET_LOADING', payload: false });
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao carregar dados' });
+    }
+  };
+
+  // Salvar dados no localStorage
+  const salvarDados = async () => {
+    try {
+      LocalStorage.save('produtos', state.produtos);
+      LocalStorage.save('vendas', state.vendas);
+      LocalStorage.save('categorias', state.categorias);
+      LocalStorage.save('vendedores', state.vendedores);
+      LocalStorage.save('metas', state.metas);
+    } catch (error) {
+      console.error('Erro ao salvar dados:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao salvar dados' });
+    }
+  };
+
+  // Actions
+  const actions = {
+    carregarDados,
+    salvarDados,
+    
+    // Produtos
+    adicionarProduto: async (produtoData: Omit<Produto, 'id' | 'dataAtualizacao'>) => {
+      const produto: Produto = {
+        ...produtoData,
+        id: Date.now().toString(),
+        dataAtualizacao: new Date().toISOString(),
+      };
+      dispatch({ type: 'ADD_PRODUTO', payload: produto });
+    },
+
+    atualizarProduto: async (produto: Produto) => {
+      const produtoAtualizado = {
+        ...produto,
+        dataAtualizacao: new Date().toISOString(),
+      };
+      dispatch({ type: 'UPDATE_PRODUTO', payload: produtoAtualizado });
+    },
+
+    removerProduto: async (id: string) => {
+      dispatch({ type: 'DELETE_PRODUTO', payload: id });
+    },
 
     // Vendas
-    vendas,
-    adicionarVenda,
+    adicionarVenda: async (vendaData: Omit<Venda, 'id'>) => {
+      const venda: Venda = {
+        ...vendaData,
+        id: Date.now().toString(),
+      };
+      dispatch({ type: 'ADD_VENDA', payload: venda });
+      
+      // Atualizar estoque automaticamente
+      const produto = state.produtos.find(p => p.id === venda.produtoId);
+      if (produto) {
+        const produtoAtualizado = {
+          ...produto,
+          quantidade: produto.quantidade - venda.quantidade,
+          dataAtualizacao: new Date().toISOString(),
+        };
+        dispatch({ type: 'UPDATE_PRODUTO', payload: produtoAtualizado });
+      }
+    },
 
-    // Perdas
-    perdas
+    removerVenda: async (id: string) => {
+      dispatch({ type: 'DELETE_VENDA', payload: id });
+    },
+
+    // Categorias
+    adicionarCategoria: async (nome: string) => {
+      if (!state.categorias.includes(nome)) {
+        dispatch({ type: 'ADD_CATEGORIA', payload: nome });
+      }
+    },
+
+    removerCategoria: async (nome: string) => {
+      dispatch({ type: 'DELETE_CATEGORIA', payload: nome });
+    },
+
+    // Vendedores
+    adicionarVendedor: async (nome: string) => {
+      if (!state.vendedores.includes(nome)) {
+        dispatch({ type: 'ADD_VENDEDOR', payload: nome });
+      }
+    },
+
+    removerVendedor: async (nome: string) => {
+      dispatch({ type: 'DELETE_VENDEDOR', payload: nome });
+    },
+
+    // Metas
+    adicionarMeta: async (metaData: Omit<Meta, 'id'>) => {
+      const meta: Meta = {
+        ...metaData,
+        id: Date.now().toString(),
+      };
+      dispatch({ type: 'ADD_META', payload: meta });
+    },
+
+    atualizarMeta: async (meta: Meta) => {
+      dispatch({ type: 'UPDATE_META', payload: meta });
+    },
+
+    removerMeta: async (id: string) => {
+      dispatch({ type: 'DELETE_META', payload: id });
+    },
   };
 
+  // Auto-salvar quando o estado mudar
+  useEffect(() => {
+    if (!state.loading) {
+      salvarDados();
+    }
+  }, [state.produtos, state.vendas, state.categorias, state.vendedores, state.metas]);
+
+  // Carregar dados na inicialização
+  useEffect(() => {
+    carregarDados();
+  }, []);
+
   return (
-    <EstoqueContext.Provider value={contextValue}>
+    <EstoqueContext.Provider value={{ state, dispatch, actions }}>
       {children}
     </EstoqueContext.Provider>
   );
-};
+}
 
-// Hook para usar o contexto
-export const useEstoque = () => {
+// Hook customizado
+export function useEstoque() {
   const context = useContext(EstoqueContext);
-  if (context === undefined) {
-    throw new Error('useEstoque deve ser usado dentro de um EstoqueProvider');
+  if (!context) {
+    throw new Error('useEstoque deve ser usado dentro de EstoqueProvider');
   }
-  return context;
+  
+  // Retornar dados compatíveis com componentes existentes
+  return {
+    ...context,
+    produtos: context.state.produtos,
+    vendas: context.state.vendas,
+    categorias: context.state.categorias,
+    vendedores: context.state.vendedores,
+    metas: context.state.metas,
+    loading: context.state.loading,
+    error: context.state.error
+  };
+}
+
+// Utilitários de cálculo
+export const calcularEstatisticas = (produtos: Produto[], vendas: Venda[]) => {
+  const totalProdutos = produtos.length;
+  const produtosAtivos = produtos.filter(p => p.ativo).length;
+  const produtosBaixoEstoque = produtos.filter(p => p.quantidade <= p.minimo).length;
+  
+  const receitaTotal = vendas.reduce((acc, v) => acc + v.precoTotal, 0);
+  const totalVendas = vendas.length;
+  
+  const hoje = new Date();
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const vendasMesAtual = vendas.filter(v => new Date(v.data) >= inicioMes);
+  const receitaMesAtual = vendasMesAtual.reduce((acc, v) => acc + v.precoTotal, 0);
+  
+  return {
+    totalProdutos,
+    produtosAtivos,
+    produtosBaixoEstoque,
+    receitaTotal,
+    receitaMesAtual,
+    totalVendas,
+    vendasMesAtual: vendasMesAtual.length
+  };
 };
