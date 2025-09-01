@@ -18,9 +18,17 @@ temp_*.md
 guidelines/
 docs/
 
-# Pasta supabase não utilizada (sistema funciona 100% localStorage)
+# CRÍTICO: Pasta supabase contém código Deno com dependências JSR inválidas para npm
+# DEVE ser ignorada para evitar EINVALIDPACKAGENAME na Vercel
 supabase/
+supabase/**/*
 utils/supabase/
+utils/supabase/**/*
+
+# Arquivos Deno específicos que causam conflito com npm
+*.deno.ts
+deno.json
+deno.lock
 
 # Arquivos temporários
 temp_*
