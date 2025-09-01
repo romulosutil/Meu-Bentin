@@ -25,32 +25,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Verificar sessão existente no carregamento
   useEffect(() => {
+    let mounted = true;
+    
     const checkSession = async () => {
-      if (typeof window !== 'undefined') {
-        try {
-          const sessionData = await storage.get(STORAGE_KEYS.AUTH);
-          if (sessionData) {
-            const now = new Date().getTime();
-            
-            // Verificar se a sessão não expirou
-            if (sessionData.expiresAt > now) {
-              setUser(sessionData.user);
-              setIsAuthenticated(true);
-            } else {
-              // Sessão expirada, limpar
-              await storage.remove(STORAGE_KEYS.AUTH);
-              setIsAuthenticated(false);
-            }
+      if (typeof window === 'undefined' || !mounted) return;
+      
+      // Aguardar um pouco para garantir que o storage está inicializado
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (!mounted) return;
+      
+      try {
+        const sessionData = await storage.get(STORAGE_KEYS.AUTH);
+        if (!mounted) return;
+        
+        if (sessionData && sessionData.user && sessionData.expiresAt) {
+          const now = new Date().getTime();
+          
+          if (sessionData.expiresAt > now) {
+            setUser(sessionData.user);
+            setIsAuthenticated(true);
+          } else {
+            // Sessão expirada, limpar
+            await storage.remove(STORAGE_KEYS.AUTH);
+            setIsAuthenticated(false);
           }
-        } catch (error) {
-          console.error('Erro ao verificar sessão:', error);
-          await storage.remove(STORAGE_KEYS.AUTH);
+        }
+      } catch (error) {
+        if (mounted) {
+          console.error('❌ Erro ao verificar sessão:', error);
+          // Tentar limpar sem causar erro adicional
+          try {
+            await storage.remove(STORAGE_KEYS.AUTH);
+          } catch {
+            // Silencioso se não conseguir limpar
+          }
           setIsAuthenticated(false);
         }
       }
     };
 
     checkSession();
+    
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {

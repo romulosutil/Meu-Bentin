@@ -76,12 +76,12 @@ const TABS_CONFIG: TabConfig[] = [
   }
 ];
 
-// Componente de Loading
+// Componente de Loading otimizado
 const LoadingComponent = () => (
-  <div className="flex items-center justify-center py-12">
-    <div className="flex items-center gap-3">
+  <div className="flex items-center justify-center py-12 min-h-[200px]">
+    <div className="flex items-center gap-3 bg-white rounded-xl p-4 shadow-sm border border-border/30">
       <Loader2 className="h-6 w-6 animate-spin text-bentin-pink" />
-      <p className="text-muted-foreground">Carregando...</p>
+      <p className="text-muted-foreground font-medium">Carregando módulo...</p>
     </div>
   </div>
 );

@@ -4,12 +4,17 @@
   "description": "Sistema completo de gestão para loja infantil Meu Bentin",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "vite --host",
+    "build": "npm run clean:dist && vite build",
+    "preview": "vite preview --host",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "clean": "rm -rf node_modules/.cache dist .vercel",
-    "vercel-build": "npm run clean && npm install --legacy-peer-deps && npm run build"
+    "clean": "rm -rf node_modules/.cache dist build .vercel .vite",
+    "clean:dist": "rm -rf dist build",
+    "clean:all": "npm run clean && rm -rf node_modules package-lock.json",
+    "prebuild": "npm run clean:dist",
+    "postbuild": "echo '✅ Build concluído com sucesso! Output: dist/'",
+    "vercel-build": "npm run build",
+    "build:verify": "node build-verify.js"
   },
   "dependencies": {
     "react": "^18.2.0",

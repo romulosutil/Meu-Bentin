@@ -1,38 +1,119 @@
 import { AUTH_CONFIG } from '../local/constants'
-import { isDevelopment } from '../env'
 
-// Mock das funções do Supabase para build sem dependências
-const isSupabaseAvailable = async () => false
-const isSupabaseConfigured = () => false
-const testSupabaseConnection = async () => ({ connected: false, message: 'Build mode - localStorage only' })
-const isSupabaseIntegrated = false
+// Chaves de storage definidas primeiro para evitar problemas de inicialização
+const createStorageKeys = () => {
+  try {
+    return {
+      AUTH: AUTH_CONFIG?.storageKey || 'meu-bentin-auth',
+      ESTOQUE: 'meu-bentin-estoque',
+      VENDAS: 'meu-bentin-vendas', 
+      RECEITA: 'meu-bentin-receita',
+      METAS: 'meu-bentin-metas',
+      VENDEDORES: 'meu-bentin-vendedores',
+      CONFIGURACOES: 'meu-bentin-configuracoes',
+      DASHBOARD: 'meu-bentin-dashboard'
+    } as const
+  } catch {
+    return {
+      AUTH: 'meu-bentin-auth',
+      ESTOQUE: 'meu-bentin-estoque',
+      VENDAS: 'meu-bentin-vendas',
+      RECEITA: 'meu-bentin-receita',
+      METAS: 'meu-bentin-metas',
+      VENDEDORES: 'meu-bentin-vendedores',
+      CONFIGURACOES: 'meu-bentin-configuracoes',
+      DASHBOARD: 'meu-bentin-dashboard'
+    } as const
+  }
+}
 
-// Interface para operações de storage híbrido
-export interface HybridStorageService {
+export const STORAGE_KEYS = createStorageKeys()
+
+// Sistema de storage simplificado e otimizado
+export interface StorageService {
   get: (key: string) => Promise<any>
   set: (key: string, value: any) => Promise<void>
   remove: (key: string) => Promise<void>
-  getMultiple: (keys: string[]) => Promise<any[]>
-  setMultiple: (items: Array<{ key: string; value: any }>) => Promise<void>
+  clear: () => Promise<void>
 }
 
-// Implementação localStorage como fallback
-class LocalStorageService implements HybridStorageService {
+class OptimizedLocalStorage implements StorageService {
+  private cache = new Map<string, any>()
+  private initialized = false
+
+  constructor() {
+    // Inicialização segura após um tick
+    if (typeof window !== 'undefined') {
+      setTimeout(() => this.safeInitializeCache(), 0)
+    }
+  }
+
+  private safeInitializeCache() {
+    if (this.initialized) return
+    
+    try {
+      // Usar apenas as chaves definidas estaticamente
+      const keys = [
+        'meu-bentin-auth',
+        'meu-bentin-estoque',
+        'meu-bentin-vendas',
+        'meu-bentin-receita',
+        'meu-bentin-metas',
+        'meu-bentin-vendedores',
+        'meu-bentin-configuracoes',
+        'meu-bentin-dashboard'
+      ]
+      
+      keys.forEach(key => {
+        try {
+          const item = localStorage.getItem(key)
+          if (item) {
+            try {
+              this.cache.set(key, JSON.parse(item))
+            } catch {
+              this.cache.set(key, item)
+            }
+          }
+        } catch (error) {
+          // Log silencioso por key
+          console.warn(`Key ${key} erro:`, error.message)
+        }
+      })
+      
+      this.initialized = true
+      console.log('✅ Cache de storage inicializado com sucesso')
+    } catch (error) {
+      console.warn('⚠️ Inicialização parcial do cache:', error.message)
+      this.initialized = true // Continuar mesmo com erros
+    }
+  }
+
   async get(key: string): Promise<any> {
+    // Verificar cache primeiro para melhor performance
+    if (this.cache.has(key)) {
+      return this.cache.get(key)
+    }
+
     try {
       const item = localStorage.getItem(key)
-      return item ? JSON.parse(item) : null
+      if (item === null) return null
+      
+      const parsed = JSON.parse(item)
+      this.cache.set(key, parsed) // Atualizar cache
+      return parsed
     } catch (error) {
-      console.error('Erro ao ler localStorage:', error)
+      console.error(`❌ Erro ao ler storage [${key}]:`, error)
       return null
     }
   }
 
   async set(key: string, value: any): Promise<void> {
     try {
-      localStorage.setItem(key, JSON.stringify(value))
+      const serialized = JSON.stringify(value)
+      localStorage.setItem(key, serialized)
+      this.cache.set(key, value) // Atualizar cache
     } catch (error) {
-      console.error('Erro ao salvar localStorage:', error)
+      console.error(`❌ Erro ao salvar storage [${key}]:`, error)
       throw error
     }
   }
@@ -40,191 +121,71 @@ class LocalStorageService implements HybridStorageService {
   async remove(key: string): Promise<void> {
     try {
       localStorage.removeItem(key)
+      this.cache.delete(key) // Remover do cache
     } catch (error) {
-      console.error('Erro ao remover localStorage:', error)
+      console.error(`❌ Erro ao remover storage [${key}]:`, error)
       throw error
     }
   }
 
-  async getMultiple(keys: string[]): Promise<any[]> {
-    const results = await Promise.all(keys.map(key => this.get(key)))
-    return results
-  }
-
-  async setMultiple(items: Array<{ key: string; value: any }>): Promise<void> {
-    await Promise.all(items.map(item => this.set(item.key, item.value)))
-  }
-}
-
-// Mock da implementação Supabase (desabilitada para build)
-class SupabaseStorageService implements HybridStorageService {
-  async get(key: string): Promise<any> {
-    throw new Error('Supabase desabilitado para build')
-  }
-
-  async set(key: string, value: any): Promise<void> {
-    throw new Error('Supabase desabilitado para build')
-  }
-
-  async remove(key: string): Promise<void> {
-    throw new Error('Supabase desabilitado para build')
-  }
-
-  async getMultiple(keys: string[]): Promise<any[]> {
-    throw new Error('Supabase desabilitado para build')
-  }
-
-  async setMultiple(items: Array<{ key: string; value: any }>): Promise<void> {
-    throw new Error('Supabase desabilitado para build')
-  }
-}
-
-// Serviço híbrido que usa Supabase quando disponível e localStorage como fallback
-class HybridStorage implements HybridStorageService {
-  private localService = new LocalStorageService()
-  private supabaseService = new SupabaseStorageService()
-  private useSupabase = false
-
-  constructor() {
-    this.checkSupabaseAvailability()
-  }
-
-  private async checkSupabaseAvailability() {
-    if (isSupabaseIntegrated) {
-      this.useSupabase = await isSupabaseAvailable()
-      
-      if (isDevelopment()) {
-        const testResult = await testSupabaseConnection()
-        console.log(`🗄️ Storage configurado: ${this.useSupabase ? 'Supabase (integração Vercel)' : 'localStorage (fallback)'}`)
-        console.log(`📡 Teste de conectividade: ${testResult.message}`)
-        if (testResult.details) {
-          console.log('📊 Detalhes:', testResult.details)
+  async clear(): Promise<void> {
+    try {
+      // Limpar apenas chaves do Meu Bentin com verificação segura
+      const keys = STORAGE_KEYS ? Object.values(STORAGE_KEYS) : []
+      keys.forEach(key => {
+        if (key) {
+          localStorage.removeItem(key)
+          this.cache.delete(key)
         }
-      }
-    } else {
-      console.log('🔧 Integração Vercel-Supabase não detectada, usando localStorage')
-    }
-  }
-
-  async get(key: string): Promise<any> {
-    try {
-      if (this.useSupabase) {
-        return await this.supabaseService.get(key)
-      }
+      })
     } catch (error) {
-      console.warn('Fallback para localStorage devido a erro no Supabase:', error)
-      this.useSupabase = false
+      console.error('❌ Erro ao limpar storage:', error)
+      throw error
     }
-    
-    return await this.localService.get(key)
   }
 
-  async set(key: string, value: any): Promise<void> {
-    // Sempre salvar no localStorage primeiro para garantir disponibilidade
-    await this.localService.set(key, value)
-    
+  // Métodos de diagnóstico
+  getStorageSize(): number {
     try {
-      if (this.useSupabase) {
-        await this.supabaseService.set(key, value)
-      }
-    } catch (error) {
-      console.warn('Erro ao sincronizar com Supabase, dados salvos localmente:', error)
-      this.useSupabase = false
+      let totalSize = 0
+      const keys = STORAGE_KEYS ? Object.values(STORAGE_KEYS) : []
+      keys.forEach(key => {
+        if (!key) return
+        try {
+          const item = localStorage.getItem(key)
+          if (item) {
+            totalSize += new Blob([item]).size
+          }
+        } catch {
+          // Silencioso se houver erro em uma key específica
+        }
+      })
+      return totalSize
+    } catch {
+      return 0
     }
   }
 
-  async remove(key: string): Promise<void> {
-    // Remover do localStorage
-    await this.localService.remove(key)
-    
-    try {
-      if (this.useSupabase) {
-        await this.supabaseService.remove(key)
-      }
-    } catch (error) {
-      console.warn('Erro ao remover do Supabase, removido localmente:', error)
-    }
-  }
-
-  async getMultiple(keys: string[]): Promise<any[]> {
-    try {
-      if (this.useSupabase) {
-        return await this.supabaseService.getMultiple(keys)
-      }
-    } catch (error) {
-      console.warn('Fallback para localStorage devido a erro no Supabase:', error)
-      this.useSupabase = false
-    }
-    
-    return await this.localService.getMultiple(keys)
-  }
-
-  async setMultiple(items: Array<{ key: string; value: any }>): Promise<void> {
-    // Sempre salvar no localStorage primeiro
-    await this.localService.setMultiple(items)
-    
-    try {
-      if (this.useSupabase) {
-        await this.supabaseService.setMultiple(items)
-      }
-    } catch (error) {
-      console.warn('Erro ao sincronizar múltiplos com Supabase, dados salvos localmente:', error)
-      this.useSupabase = false
-    }
-  }
-
-  // Método para forçar sincronização
-  async syncToSupabase(): Promise<boolean> {
-    if (!isSupabaseIntegrated) {
-      console.log('🔗 Integração Vercel-Supabase não detectada para sincronização')
-      return false
-    }
-
-    try {
-      // Tentar reconectar
-      this.useSupabase = await isSupabaseAvailable()
-      
-      if (this.useSupabase) {
-        console.log('✅ Sincronização com Supabase disponível')
-        return true
-      } else {
-        console.log('❌ Supabase não disponível para sincronização')
-      }
-    } catch (error) {
-      console.error('💥 Erro ao tentar sincronizar com Supabase:', error)
-    }
-    
-    return false
-  }
-
-  // Método para diagnóstico da integração
-  async getIntegrationStatus(): Promise<{
-    integrated: boolean
-    connected: boolean
-    usingSupabase: boolean
-    connectionTest?: any
-  }> {
-    const connectionTest = isSupabaseIntegrated ? await testSupabaseConnection() : null
-    
+  getCacheStats() {
     return {
-      integrated: isSupabaseIntegrated,
-      connected: connectionTest?.connected || false,
-      usingSupabase: this.useSupabase,
-      connectionTest
+      cacheSize: this.cache.size,
+      initialized: this.initialized,
+      storageSize: this.getStorageSize()
     }
   }
 }
 
-// Instância singleton do storage híbrido
-export const storage = new HybridStorage()
+// Instância singleton otimizada
+export const storage = new OptimizedLocalStorage()
 
-// Chaves de storage específicas para o Meu Bentin
-export const STORAGE_KEYS = {
-  AUTH: AUTH_CONFIG.storageKey,
-  ESTOQUE: 'meu-bentin-estoque',
-  VENDAS: 'meu-bentin-vendas',
-  RECEITA: 'meu-bentin-receita',
-  METAS: 'meu-bentin-metas',
-  VENDEDORES: 'meu-bentin-vendedores',
-  CONFIGURACOES: 'meu-bentin-configuracoes'
-} as const
+// Log de inicialização
+console.log('🗄️ Sistema de storage otimizado inicializado')
+
+// Log de stats após inicialização (sem dependência de process.env)
+setTimeout(() => {
+  try {
+    console.log('📊 Storage stats:', storage.getCacheStats())
+  } catch (error) {
+    console.warn('⚠️ Erro ao obter stats do storage:', error)
+  }
+}, 2000)

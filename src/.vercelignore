@@ -22,6 +22,7 @@ guidelines/
 
 # Scripts e utilitários de desenvolvimento
 deploy-check.js
+build-verify.js
 *.config.local.js
 
 # Testes
@@ -43,8 +44,9 @@ tmp/
 temp/
 .tmp/
 
-# Build artifacts
-dist/
+# Build artifacts incorretos (manter apenas dist/)
+build/
+out/
 .vercel/
 .next/
 

@@ -128,7 +128,9 @@ pnpm-lock.yaml
 build/
 out/
 
-# Deploy e verificação
+# Deploy e verificação (manter arquivos de documentação)
 deploy-check.js
-DEPLOY_*.md
-guidelines/
+build-verify.js
+
+# Guidelines (manter no repositório para documentação)
+# guidelines/
