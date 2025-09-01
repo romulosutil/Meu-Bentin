@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "vite build --mode production",
+    "build": "vite build --outDir dist --mode production",
     "preview": "vite preview --host",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "clean": "rm -rf node_modules/.cache dist build .vercel .vite",
@@ -13,13 +13,15 @@
     "clean:all": "npm run clean && rm -rf node_modules package-lock.json",
     "prebuild": "npm run clean:dist",
     "postbuild": "echo '✅ Build concluído com sucesso! Output: dist/' && ls -la dist/",
-    "vercel-build": "npm run clean:dist && vite build --mode production",
+    "vercel-build": "npm run clean:dist && vite build --outDir dist --mode production",
     "build:verify": "node build-verify.js",
     "build:test": "node final-build-test.js",
     "cleanup": "node final-cleanup.js",
     "deploy:check": "node vercel-config-fix.js && npm run test:dist",
     "test:dist": "node dist-test-final.js",
-    "fix:vercel": "node vercel-config-fix.js"
+    "test:outdir": "node test-outdir.js",
+    "fix:vercel": "node vercel-config-fix.js",
+    "fix:output": "node fix-build-output.js"
   },
   "dependencies": {
     "react": "^18.2.0",

@@ -21,7 +21,11 @@ const duplicateConfigs = [
   'temp_backup.txt',
   'build-config.js',
   'cleanup-configs.js',
-  'deploy-check.js'
+  'deploy-check.js',
+  'vite.config.js',
+  'vite.config.mjs',
+  '.viterc',
+  'vite.config.local.ts'
 ];
 
 // Documentações duplicadas/desnecessárias
