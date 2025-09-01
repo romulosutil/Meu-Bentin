@@ -112,12 +112,6 @@ dist/
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
-# Supabase - IGNORAR COMPLETAMENTE
-.branches
-.temp
-supabase/
-**/supabase/**
-
 # Package managers lockfiles que podem conter cache problemático
 package-lock.json
 yarn.lock
@@ -133,11 +127,6 @@ pnpm-lock.yaml
 # Arquivos de build que podem conter referências problemáticas
 build/
 out/
-
-# Arquivos que podem conter dependências JSR
-**/kv_store.tsx
-**/*supabase*
-**/*jsr*
 
 # Deploy e verificação
 deploy-check.js

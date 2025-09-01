@@ -12,12 +12,13 @@ export default defineConfig({
   },
   // Configuração para compatibilidade com process.env em alguns casos
   define: {
-    'process.env': {}
+    'process.env': {},
+    'global': 'globalThis'
   },
   build: {
     outDir: 'dist',
     sourcemap: false,
-    minify: 'terser',
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks: {
@@ -26,9 +27,15 @@ export default defineConfig({
           charts: ['recharts'],
           icons: ['lucide-react']
         }
+      },
+      external: (id) => {
+        // Excluir qualquer coisa relacionada ao Supabase ou JSR
+        return id.includes('supabase') || id.includes('jsr:') || id.includes('@supabase')
       }
     },
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1000,
+    target: 'esnext',
+    cssCodeSplit: true
   },
   server: {
     port: 3000,
@@ -44,11 +51,17 @@ export default defineConfig({
       'react',
       'react-dom',
       'lucide-react',
-      'recharts'
+      'recharts',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-dialog'
     ],
     exclude: [
       'supabase',
-      '@supabase/supabase-js'
+      '@supabase/supabase-js',
+      'jsr:*'
     ]
+  },
+  esbuild: {
+    logOverride: { 'this-is-undefined-in-esm': 'silent' }
   }
 })

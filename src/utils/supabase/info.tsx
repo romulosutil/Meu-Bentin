@@ -1,28 +1,11 @@
-/* INTEGRAÇÃO VERCEL-SUPABASE - CONFIGURAÇÃO AUTOMÁTICA */
+/* MOCK FILE - Para compatibilidade com build */
 
-import { supabaseConfig, appConfig, isDevelopment } from '../env';
+// Valores mock para evitar erros de build
+export const projectId = "mock-project-id"
+export const publicAnonKey = "mock-anon-key"
 
-// Informações do app
-export const APP_NAME = appConfig.name
-export const APP_VERSION = appConfig.version
-export const AUTH_STORAGE_KEY = "meu-bentin-auth"
-export const SESSION_DURATION = 24 * 60 * 60 * 1000 // 24 horas
+// Flag para indicar que Supabase não está integrado
+export const isSupabaseIntegrated = false
 
-// Configurações do Supabase usando o utilitário seguro
-export const projectId = supabaseConfig.getProjectId()
-export const publicAnonKey = supabaseConfig.anonKey
-export const supabaseUrl = supabaseConfig.url
-export const serviceRoleKey = supabaseConfig.serviceRoleKey
-
-// Verificar se a integração está ativa
-export const isSupabaseIntegrated = supabaseConfig.isConfigured()
-
-// Log de configuração (apenas em desenvolvimento)
-if (typeof window !== 'undefined' && isDevelopment()) {
-  console.log('🔗 Status da Integração Supabase:', {
-    integrado: isSupabaseIntegrated,
-    projectId: projectId !== 'local' ? projectId : 'Não configurado',
-    hasAnonKey: !!publicAnonKey,
-    hasServiceRole: !!serviceRoleKey
-  })
-}
+// URLs mock para compatibilidade
+export const supabaseUrl = "https://mock.supabase.co"

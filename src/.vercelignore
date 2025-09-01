@@ -4,6 +4,7 @@
 
 # Pasta completa do Supabase (contém código de servidor Deno)
 supabase/
+**/supabase/**
 
 # Arquivos de desenvolvimento e configuração local
 .env.local
@@ -35,6 +36,7 @@ logs/
 .cache/
 .npm/
 .yarn/
+node_modules/.cache/
 
 # Arquivos temporários
 tmp/
@@ -56,3 +58,13 @@ pnpm-lock.yaml
 Thumbs.db
 *.swp
 *.swo
+
+# Arquivos que podem conter dependências JSR problemáticas
+**/kv_store.tsx
+**/*jsr*
+**/*deno*
+**/deno.*
+
+# Configurações de editor
+.vscode/
+.idea/
