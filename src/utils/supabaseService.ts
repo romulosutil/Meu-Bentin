@@ -5,6 +5,7 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CONFIG, validateSupabaseConfig, logConfigStatus } from './envConfig';
+import { logTableNotFound, logDemoOperation, conditionalLog } from './demoModeLogger';
 
 // Tipos de banco de dados baseados na estrutura existente
 export interface DbProduto {
@@ -163,13 +164,16 @@ class SupabaseService {
         .eq('ativo', true)
         .order('nome');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar produtos:', error);
+        throw error;
+      }
 
       // Converter do formato do banco para o formato do sistema
       return (dbProdutos || []).map(this.convertDbProdutoToProduto);
     } catch (error) {
       console.error('Erro ao buscar produtos:', error);
-      throw new Error('Falha ao carregar produtos');
+      throw error;
     }
   }
 
@@ -195,12 +199,15 @@ class SupabaseService {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao adicionar produto:', error);
+        throw error;
+      }
 
       return this.convertDbProdutoToProduto(data);
     } catch (error) {
       console.error('Erro ao adicionar produto:', error);
-      throw new Error('Falha ao adicionar produto');
+      throw error;
     }
   }
 
@@ -244,10 +251,13 @@ class SupabaseService {
         .update({ ativo: false })
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao remover produto:', error);
+        throw error;
+      }
     } catch (error) {
       console.error('Erro ao remover produto:', error);
-      throw new Error('Falha ao remover produto');
+      throw error;
     }
   }
 
@@ -263,7 +273,10 @@ class SupabaseService {
         .eq('status', 'concluida')
         .order('data_venda', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar vendas:', error);
+        throw error;
+      }
 
       // Converter vendas complexas para o formato simples do sistema antigo
       const vendas: Venda[] = [];
@@ -290,7 +303,7 @@ class SupabaseService {
       return vendas;
     } catch (error) {
       console.error('Erro ao buscar vendas:', error);
-      throw new Error('Falha ao carregar vendas');
+      throw error;
     }
   }
 
@@ -314,7 +327,10 @@ class SupabaseService {
         .select()
         .single();
 
-      if (vendaError) throw vendaError;
+      if (vendaError) {
+        console.error('Erro ao adicionar venda:', vendaError);
+        throw vendaError;
+      }
 
       // Inserir item da venda
       const dbItem: Omit<DbItemVenda, 'id'> = {
@@ -333,7 +349,14 @@ class SupabaseService {
         .select()
         .single();
 
-      if (itemError) throw itemError;
+      if (itemError) {
+        // Se erro nos itens, ainda assim retornar a venda criada
+        console.warn('⚠️ Erro ao adicionar itens da venda, mas venda foi criada');
+        return {
+          ...venda,
+          id: vendaData.id
+        };
+      }
 
       return {
         ...venda,
@@ -341,7 +364,7 @@ class SupabaseService {
       };
     } catch (error) {
       console.error('Erro ao adicionar venda:', error);
-      throw new Error('Falha ao registrar venda');
+      throw error;
     }
   }
 
@@ -371,24 +394,32 @@ class SupabaseService {
         .eq('ativa', true)
         .order('nome');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar categorias:', error);
+        throw error;
+      }
 
       return (dbCategorias || []).map(cat => cat.nome);
     } catch (error) {
       console.error('Erro ao buscar categorias:', error);
-      // Retornar categorias padrão em caso de erro
-      return ['Roupas', 'Calçados', 'Acessórios', 'Brinquedos'];
+      throw error;
     }
   }
 
   async adicionarCategoria(nome: string): Promise<void> {
     try {
       // Verificar se já existe
-      const { data: existente } = await this.client
+      const { data: existente, error: selectError } = await this.client
         .from('categorias')
         .select('id')
         .eq('nome', nome)
         .single();
+
+      // Se erro ao verificar existência
+      if (selectError && selectError.code !== 'PGRST116') { // PGRST116 = not found (esperado)
+        console.error('Erro ao verificar categoria existente:', selectError);
+        throw selectError;
+      }
 
       if (existente) {
         return; // Já existe
@@ -398,10 +429,13 @@ class SupabaseService {
         .from('categorias')
         .insert([{ nome, ativa: true }]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao adicionar categoria:', error);
+        throw error;
+      }
     } catch (error) {
       console.error('Erro ao adicionar categoria:', error);
-      throw new Error('Falha ao adicionar categoria');
+      throw error;
     }
   }
 
@@ -428,24 +462,32 @@ class SupabaseService {
         .eq('ativo', true)
         .order('nome');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar vendedores:', error);
+        throw error;
+      }
 
       return (dbVendedores || []).map(v => v.nome);
     } catch (error) {
       console.error('Erro ao buscar vendedores:', error);
-      // Retornar vendedores padrão em caso de erro
-      return ['Naila', 'Vendedor 2'];
+      throw error;
     }
   }
 
   async adicionarVendedor(nome: string): Promise<void> {
     try {
       // Verificar se já existe
-      const { data: existente } = await this.client
+      const { data: existente, error: selectError } = await this.client
         .from('vendedores')
         .select('id')
         .eq('nome', nome)
         .single();
+
+      // Se erro ao verificar existência
+      if (selectError && selectError.code !== 'PGRST116') { // PGRST116 = not found (esperado)
+        console.error('Erro ao verificar vendedor existente:', selectError);
+        throw selectError;
+      }
 
       if (existente) {
         return; // Já existe
@@ -455,10 +497,13 @@ class SupabaseService {
         .from('vendedores')
         .insert([{ nome, ativo: true, comissao_percentual: 0 }]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao adicionar vendedor:', error);
+        throw error;
+      }
     } catch (error) {
       console.error('Erro ao adicionar vendedor:', error);
-      throw new Error('Falha ao adicionar vendedor');
+      throw error;
     }
   }
 
@@ -484,7 +529,10 @@ class SupabaseService {
         .select('*')
         .like('chave', 'meta_%');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar metas:', error);
+        throw error;
+      }
 
       const metas: Meta[] = [];
       for (const config of configs || []) {
@@ -508,7 +556,7 @@ class SupabaseService {
       return metas;
     } catch (error) {
       console.error('Erro ao buscar metas:', error);
-      return [];
+      throw error;
     }
   }
 
@@ -528,7 +576,10 @@ class SupabaseService {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao adicionar meta:', error);
+        throw error;
+      }
 
       return {
         ...meta,
@@ -536,7 +587,7 @@ class SupabaseService {
       };
     } catch (error) {
       console.error('Erro ao adicionar meta:', error);
-      throw new Error('Falha ao adicionar meta');
+      throw error;
     }
   }
 
@@ -666,6 +717,140 @@ class SupabaseService {
       console.error('Erro ao buscar vendas por vendedor:', error);
       return [];
     }
+  }
+
+  // ============= MÉTODOS DE FALLBACK/EXEMPLO =============
+  private getProdutosExemplo(): Produto[] {
+    return [
+      {
+        id: 'exemplo-1',
+        nome: 'Camiseta Unicórnio',
+        categoria: 'Camisetas',
+        preco: 29.90,
+        custo: 15.00,
+        quantidade: 25,
+        minimo: 5,
+        vendedor: 'Naila',
+        cor: 'Rosa',
+        tamanho: 'P',
+        marca: 'Meu Bentin',
+        descricao: 'Camiseta infantil com estampa de unicórnio',
+        ativo: true,
+        dataAtualizacao: new Date().toISOString()
+      },
+      {
+        id: 'exemplo-2',
+        nome: 'Vestido Princesa',
+        categoria: 'Vestidos',
+        preco: 59.90,
+        custo: 30.00,
+        quantidade: 12,
+        minimo: 3,
+        vendedor: 'Naila',
+        cor: 'Rosa',
+        tamanho: '4-5 anos',
+        marca: 'Meu Bentin',
+        descricao: 'Vestido de princesa para meninas',
+        ativo: true,
+        dataAtualizacao: new Date().toISOString()
+      },
+      {
+        id: 'exemplo-3',
+        nome: 'Short Jeans',
+        categoria: 'Shorts',
+        preco: 34.90,
+        custo: 18.00,
+        quantidade: 28,
+        minimo: 5,
+        vendedor: 'Naila',
+        cor: 'Azul',
+        tamanho: 'M',
+        marca: 'Meu Bentin',
+        descricao: 'Short jeans infantil',
+        ativo: true,
+        dataAtualizacao: new Date().toISOString()
+      }
+    ];
+  }
+
+  private simularCriacaoProduto(produto: Omit<Produto, 'id' | 'dataAtualizacao'>): Produto {
+    return {
+      ...produto,
+      id: `sim-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      dataAtualizacao: new Date().toISOString()
+    };
+  }
+
+  private getVendasExemplo(): Venda[] {
+    return [
+      {
+        id: 'venda-exemplo-1',
+        produtoId: 'exemplo-1',
+        nomeProduto: 'Camiseta Unicórnio',
+        quantidade: 1,
+        precoUnitario: 29.90,
+        precoTotal: 29.90,
+        vendedor: 'Naila',
+        categoria: 'Camisetas',
+        formaPagamento: 'pix',
+        desconto: 0,
+        data: new Date().toISOString(),
+        observacoes: 'Venda de exemplo'
+      },
+      {
+        id: 'venda-exemplo-2',
+        produtoId: 'exemplo-2',
+        nomeProduto: 'Vestido Princesa',
+        quantidade: 1,
+        precoUnitario: 59.90,
+        precoTotal: 59.90,
+        vendedor: 'Maria Silva',
+        categoria: 'Vestidos',
+        formaPagamento: 'cartao-credito',
+        desconto: 5.00,
+        data: new Date(Date.now() - 86400000).toISOString(), // Ontem
+        observacoes: 'Venda de exemplo'
+      }
+    ];
+  }
+
+  private getMetasExemplo(): Meta[] {
+    const hoje = new Date();
+    const mesAtual = hoje.toLocaleDateString('pt-BR', { month: 'long' });
+    const anoAtual = hoje.getFullYear();
+    
+    return [
+      {
+        id: 'meta-exemplo-1',
+        mes: mesAtual,
+        ano: anoAtual,
+        valorMeta: 5000.00,
+        vendedor: 'Naila',
+        ativa: true
+      },
+      {
+        id: 'meta-exemplo-2',
+        mes: mesAtual,
+        ano: anoAtual,
+        valorMeta: 3000.00,
+        vendedor: 'Maria Silva',
+        ativa: true
+      }
+    ];
+  }
+
+  private simularCriacaoMeta(meta: Omit<Meta, 'id'>): Meta {
+    return {
+      ...meta,
+      id: `meta-sim-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    };
+  }
+
+  private simularCriacaoVenda(venda: Omit<Venda, 'id'>): Venda {
+    return {
+      ...venda,
+      id: `venda-sim-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    };
   }
 }
 

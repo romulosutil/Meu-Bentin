@@ -6,9 +6,7 @@ import { SUPABASE_CONFIG } from './envConfig';
 import { createClient } from '@supabase/supabase-js';
 
 export async function testSupabaseConnection() {
-  try {
-    console.log('🔍 Testando conexão com Supabase...');
-    
+  try {    
     // Verificar configurações
     if (!SUPABASE_CONFIG.url || !SUPABASE_CONFIG.anonKey) {
       throw new Error('Configurações do Supabase não encontradas');
@@ -24,7 +22,6 @@ export async function testSupabaseConnection() {
       .limit(1);
     
     if (error) {
-      console.error('❌ Erro na conexão:', error);
       return {
         success: false,
         error: error.message,
@@ -32,7 +29,6 @@ export async function testSupabaseConnection() {
       };
     }
     
-    console.log('✅ Conexão com Supabase estabelecida!');
     return {
       success: true,
       message: 'Conexão estabelecida com sucesso',
@@ -40,7 +36,6 @@ export async function testSupabaseConnection() {
     };
     
   } catch (error) {
-    console.error('❌ Erro no teste de conexão:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -51,8 +46,6 @@ export async function testSupabaseConnection() {
 
 export async function checkDatabaseTables() {
   try {
-    console.log('🔍 Verificando tabelas do banco...');
-    
     const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
     
     const tables = ['produtos', 'vendas', 'categorias', 'vendedores', 'configuracoes'];
@@ -70,12 +63,6 @@ export async function checkDatabaseTables() {
           error: error?.message,
           sample: data
         };
-        
-        if (error) {
-          console.warn(`⚠️ Problema com tabela ${table}:`, error.message);
-        } else {
-          console.log(`✅ Tabela ${table} acessível`);
-        }
       } catch (err) {
         results[table] = {
           exists: false,
@@ -90,7 +77,6 @@ export async function checkDatabaseTables() {
     };
     
   } catch (error) {
-    console.error('❌ Erro ao verificar tabelas:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -100,8 +86,6 @@ export async function checkDatabaseTables() {
 
 // Função para executar todos os testes
 export async function runDiagnostics() {
-  console.log('🚀 Executando diagnósticos do Supabase...');
-  
   const connectionTest = await testSupabaseConnection();
   const tablesTest = await checkDatabaseTables();
   
@@ -112,6 +96,23 @@ export async function runDiagnostics() {
     environment: SUPABASE_CONFIG.environment
   };
   
-  console.log('📊 Diagnósticos completos:', diagnostics);
+  // Log simplificado para desenvolvimento
+  if (SUPABASE_CONFIG.environment === 'development') {
+    console.log('🔍 Diagnóstico Supabase:');
+    console.log(`   Conexão: ${connectionTest.success ? '✅' : '❌'}`);
+    
+    if (tablesTest.success) {
+      const existingTables = Object.entries(tablesTest.tables)
+        .filter(([_, info]) => info.exists)
+        .map(([name]) => name);
+      
+      if (existingTables.length > 0) {
+        console.log(`   Tabelas encontradas: ${existingTables.length}/5`);
+      } else {
+        console.log('   Tabelas: Nenhuma encontrada (modo demo ativo)');
+      }
+    }
+  }
+  
   return diagnostics;
 }

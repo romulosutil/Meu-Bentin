@@ -6,6 +6,9 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { supabaseService, Produto, Venda, Meta } from './supabaseService';
 import { runDiagnostics } from './testSupabase';
+import { DemoModeIndicator } from '../components/DemoModeIndicator';
+import { useDemoMode } from '../hooks/useDemoMode';
+import { activateDemoMode, demoLogger } from './demoModeLogger';
 
 // Tipos mantidos para compatibilidade
 export interface EstoqueState {
@@ -197,7 +200,8 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
         supabaseService.getMetas()
       ]);
 
-      console.log('✅ Dados carregados:', {
+      console.log('✅ Sistema Meu Bentin carregado com sucesso');
+      console.log('📊 Dados carregados:', {
         produtos: produtos.length,
         vendas: vendas.length,
         categorias: categorias.length,
@@ -215,12 +219,19 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('❌ Erro ao carregar dados:', error);
       
-      // Usar dados padrão em caso de erro
-      console.log('🔄 Usando dados padrão temporariamente...');
-      dispatch({ type: 'SET_CATEGORIAS', payload: ['Roupas', 'Calçados', 'Acessórios', 'Brinquedos'] });
-      dispatch({ type: 'SET_VENDEDORES', payload: ['Naila', 'Vendedor 2'] });
+      // Usar dados padrão como fallback
+      dispatch({ type: 'SET_CATEGORIAS', payload: ['Camisetas', 'Vestidos', 'Shorts', 'Calças', 'Conjuntos', 'Pijamas', 'Acessórios'] });
+      dispatch({ type: 'SET_VENDEDORES', payload: ['Naila', 'Maria Silva', 'João Santos', 'Ana Costa'] });
       
-      dispatch({ type: 'SET_ERROR', payload: 'Conexão com banco de dados indisponível. Usando modo offline temporário.' });
+      // Log do erro para diagnóstico
+      console.error('❌ Erro na conexão com Supabase:', error);
+      
+      // Definir erro específico para o usuário
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao conectar com o banco de dados: ${errorMessage}` });
+      
+      // Não ativar modo demo - assumir que as tabelas estão configuradas
+      
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
@@ -400,8 +411,12 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
     const initializeData = async () => {
       try {
         // Executar diagnósticos em desenvolvimento
-        if (import.meta.env.VITE_ENVIRONMENT === 'development') {
-          await runDiagnostics();
+        try {
+          if (import.meta.env?.VITE_ENVIRONMENT === 'development' || import.meta.env?.DEV) {
+            await runDiagnostics();
+          }
+        } catch (envError) {
+          console.warn('Aviso: Não foi possível acessar variáveis de ambiente para diagnósticos');
         }
         
         await carregarDados();
@@ -430,6 +445,8 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
       </div>
     );
   }
+
+  // Sistema configurado para usar diretamente as tabelas do Supabase
 
   return (
     <EstoqueContext.Provider value={{ state, dispatch, actions }}>

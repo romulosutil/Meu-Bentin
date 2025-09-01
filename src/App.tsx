@@ -1,4 +1,4 @@
-import { useState, useCallback, Suspense, lazy } from 'react';
+import { useState, useCallback, Suspense, lazy, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { EstoqueProvider } from './utils/EstoqueContextSupabase';
 import { ToastProvider } from './components/ToastProvider';
@@ -8,6 +8,7 @@ import Login from './components/Login';
 import AuthenticatedHeader from './components/AuthenticatedHeader';
 import Dashboard from './components/Dashboard';
 import { ShoppingBag, Package, DollarSign, TrendingUp, BarChart3, Loader2 } from 'lucide-react';
+import { initializeClipboard } from './utils/clipboard';
 
 // Lazy loading para componentes pesados
 const Estoque = lazy(() => import('./components/Estoque'));
@@ -92,6 +93,11 @@ export default function App() {
 
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value as TabValue);
+  }, []);
+
+  // Inicializar verificação de clipboard antecipadamente
+  useEffect(() => {
+    initializeClipboard();
   }, []);
 
   // Se não estiver autenticado, mostrar tela de login

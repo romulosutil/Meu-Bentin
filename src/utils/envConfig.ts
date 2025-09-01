@@ -5,22 +5,34 @@
 
 // Função para obter variáveis de ambiente de forma segura
 function getEnvVar(key: string, fallback?: string): string {
-  // Tentar usar import.meta.env primeiro (Vite)
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    const value = import.meta.env[key];
-    if (value) return value;
+  try {
+    // Tentar usar import.meta.env primeiro (Vite)
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      const value = import.meta.env[key];
+      if (value && value !== 'undefined') return value;
+    }
+    
+    // Fallback para process.env (caso necessário)
+    if (typeof process !== 'undefined' && process.env) {
+      const value = process.env[key];
+      if (value && value !== 'undefined') return value;
+    }
+    
+    // Usar fallback se fornecido
+    if (fallback) return fallback;
+    
+    // Para VITE_ENVIRONMENT, usar 'development' como padrão
+    if (key === 'VITE_ENVIRONMENT') {
+      return 'development';
+    }
+    
+    throw new Error(`Variável de ambiente ${key} não encontrada`);
+  } catch (error) {
+    console.warn(`Erro ao acessar variável ${key}:`, error);
+    if (fallback) return fallback;
+    if (key === 'VITE_ENVIRONMENT') return 'development';
+    throw error;
   }
-  
-  // Fallback para process.env (caso necessário)
-  if (typeof process !== 'undefined' && process.env) {
-    const value = process.env[key];
-    if (value) return value;
-  }
-  
-  // Usar fallback se fornecido
-  if (fallback) return fallback;
-  
-  throw new Error(`Variável de ambiente ${key} não encontrada`);
 }
 
 // Configurações do Supabase

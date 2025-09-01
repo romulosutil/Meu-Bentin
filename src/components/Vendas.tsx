@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { ScrollArea } from './ui/scroll-area';
+import { Textarea } from './ui/textarea';
 import { useToast } from './ToastProvider';
 import { validateVenda, validateQuantidade } from '../utils/validation';
 import { 
@@ -24,7 +25,8 @@ import {
   X,
   CalendarDays,
   Filter,
-  PackageX
+  PackageX,
+  Trash2
 } from 'lucide-react';
 
 interface VendaFormData {
@@ -70,8 +72,7 @@ const Vendas = () => {
     produtos, 
     vendedores, 
     vendas, 
-    adicionarVendedor, 
-    adicionarVenda 
+    actions: { adicionarVendedor, adicionarVenda }
   } = useEstoque();
   
   const { addToast } = useToast();
@@ -97,6 +98,47 @@ const Vendas = () => {
   const [carrinhoItens, setCarrinhoItens] = useState<ItemCarrinho[]>([]);
   const [produtoSelecionado, setProdutoSelecionado] = useState('');
   const [quantidadeProduto, setQuantidadeProduto] = useState('');
+
+  // Handlers estáveis para formulários
+  const handleVendedorNomeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormVendedor(prev => ({...prev, nome: e.target.value}));
+  }, []);
+
+  const handleVendedorEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormVendedor(prev => ({...prev, email: e.target.value}));
+  }, []);
+
+  const handleVendedorTelefoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormVendedor(prev => ({...prev, telefone: e.target.value}));
+  }, []);
+
+  const handleVendedorComissaoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormVendedor(prev => ({...prev, comissao: e.target.value}));
+  }, []);
+
+  const handleClienteChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormVenda(prev => ({...prev, cliente: e.target.value}));
+  }, []);
+
+  const handleVendedorIdChange = useCallback((value: string) => {
+    setFormVenda(prev => ({...prev, vendedorId: value}));
+  }, []);
+
+  const handleFormaPagamentoChange = useCallback((value: string) => {
+    setFormVenda(prev => ({...prev, formaPagamento: value}));
+  }, []);
+
+  const handleDescontoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormVenda(prev => ({...prev, desconto: e.target.value}));
+  }, []);
+
+  const handleObservacoesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setFormVenda(prev => ({...prev, observacoes: e.target.value}));
+  }, []);
+
+  const handleQuantidadeProdutoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuantidadeProduto(e.target.value);
+  }, []);
 
   // Filtrar vendas por período
   const vendasPorPeriodo = useMemo(() => {
@@ -133,7 +175,8 @@ const Vendas = () => {
   const vendasFiltradas = useMemo(() => {
     return vendasPorPeriodo.filter(venda => {
       const matchFiltro = venda.id.toLowerCase().includes(filtro.toLowerCase()) ||
-                         venda.nomeProduto.toLowerCase().includes(filtro.toLowerCase());
+                         venda.nomeProduto.toLowerCase().includes(filtro.toLowerCase()) ||
+                         (venda as any).cliente?.toLowerCase().includes(filtro.toLowerCase());
       const matchVendedor = vendedorFiltro === 'todos' || venda.vendedor === vendedorFiltro;
       return matchFiltro && matchVendedor;
     });
@@ -210,12 +253,20 @@ const Vendas = () => {
     const quantidade = parseInt(quantidadeProduto);
     
     // Validar quantidade
-    const validation = validateQuantidade(quantidadeProduto, produto.quantidade);
-    if (!validation.isValid) {
+    if (isNaN(quantidade) || quantidade <= 0) {
       addToast({
         type: 'error',
         title: 'Quantidade inválida',
-        description: validation.errors.join(', ')
+        description: 'Digite uma quantidade válida maior que zero'
+      });
+      return;
+    }
+
+    if (quantidade > produto.quantidade) {
+      addToast({
+        type: 'error',
+        title: 'Estoque insuficiente',
+        description: `Disponível: ${produto.quantidade} unidades`
       });
       return;
     }
@@ -243,8 +294,8 @@ const Vendas = () => {
           : item
       ));
     } else {
-      const precoUnitario = produto.emPromocao && produto.precoPromocional 
-        ? produto.precoPromocional 
+      const precoUnitario = (produto as any).emPromocao && (produto as any).precoPromocional 
+        ? (produto as any).precoPromocional 
         : produto.preco;
 
       const novoItem: ItemCarrinho = {
@@ -266,6 +317,11 @@ const Vendas = () => {
       description: `${produto.nome} foi adicionado ao carrinho`
     });
   }, [produtoSelecionado, quantidadeProduto, produtos, carrinhoItens, addToast]);
+
+  // Função para remover item do carrinho
+  const removerDoCarrinho = useCallback((produtoId: string) => {
+    setCarrinhoItens(prev => prev.filter(item => item.produtoId !== produtoId));
+  }, []);
 
   // Função para finalizar venda
   const finalizarVenda = useCallback(async () => {
@@ -305,7 +361,11 @@ const Vendas = () => {
           formaPagamento: formVenda.formaPagamento as any,
           desconto: descontoItem,
           data: new Date().toISOString(),
-          observacoes: formVenda.observacoes.trim()
+          observacoes: formVenda.observacoes.trim(),
+          cliente: formVenda.cliente.trim(),
+          numero: `V${Date.now()}`,
+          status: 'concluida',
+          total: item.subtotal - descontoItem
         });
       }
 
@@ -355,6 +415,13 @@ const Vendas = () => {
     }
   }, []);
 
+  // Calcular total do carrinho
+  const totalCarrinho = useMemo(() => {
+    const subtotal = carrinhoItens.reduce((total, item) => total + item.subtotal, 0);
+    const desconto = parseFloat(formVenda.desconto) || 0;
+    return Math.max(0, subtotal - desconto);
+  }, [carrinhoItens, formVenda.desconto]);
+
   // Estado vazio
   if (vendas.length === 0) {
     return (
@@ -396,7 +463,7 @@ const Vendas = () => {
             </CardHeader>
             <CardContent>
               <div className="text-xl sm:text-2xl font-bold text-bentin-green">0</div>
-              <p className="text-xs text-gray-600 font-medium">✅ vendas concluídas</p>
+              <p className="text-xs text-gray-600 font-medium">📈 vendas realizadas</p>
             </CardContent>
           </Card>
 
@@ -408,10 +475,8 @@ const Vendas = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-bentin-orange">
-                {vendedores.filter(v => v.ativo).length}
-              </div>
-              <p className="text-xs text-gray-600 font-medium">👥 vendedores ativos</p>
+              <div className="text-xl sm:text-2xl font-bold text-bentin-orange">{vendedores.length}</div>
+              <p className="text-xs text-gray-600 font-medium">👥 equipe ativa</p>
             </CardContent>
           </Card>
         </div>
@@ -419,45 +484,293 @@ const Vendas = () => {
         {/* Estado vazio */}
         <Card className="bentin-card">
           <CardContent className="text-center py-12 sm:py-16">
-            <ShoppingBag className="h-16 w-16 sm:h-20 sm:w-20 mx-auto mb-4 text-gray-300" />
+            <ShoppingCart className="h-16 w-16 sm:h-20 sm:w-20 mx-auto mb-4 text-gray-300" />
             <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">
               Nenhuma venda registrada
             </h3>
             <p className="text-sm sm:text-base text-gray-500 mb-6 max-w-md mx-auto">
-              Comece registrando sua primeira venda para acompanhar o desempenho e receita da loja.
+              Comece registrando suas primeiras vendas para acompanhar o desempenho e receita da loja.
             </p>
-            
-            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-              {produtos.length === 0 ? (
-                <div className="text-center p-4 bg-orange-50 rounded-xl border border-orange-200">
-                  <PackageX className="h-8 w-8 mx-auto mb-2 text-orange-500" />
-                  <p className="text-sm text-orange-700 font-medium">
-                    Cadastre produtos no estoque antes de registrar vendas
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <Dialog open={modalNovaVenda} onOpenChange={setModalNovaVenda}>
-                    <DialogTrigger asChild>
-                      <Button className="bentin-button-primary">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Registrar Primeira Venda
-                      </Button>
-                    </DialogTrigger>
-                    {/* Modal content será adicionado abaixo */}
-                  </Dialog>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Dialog open={modalNovaVenda} onOpenChange={setModalNovaVenda}>
+                <DialogTrigger asChild>
+                  <Button className="bentin-button-primary">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Primeira Venda
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="w-[95vw] max-w-4xl mx-auto max-h-[90vh] overflow-hidden">
+                  <DialogHeader>
+                    <DialogTitle>Registrar Nova Venda</DialogTitle>
+                    <DialogDescription>
+                      Complete os dados da venda e adicione produtos ao carrinho
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[70vh] px-1">
+                    <div className="space-y-6 py-4">
+                      
+                      {/* Dados da Venda */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="cliente-empty">Cliente *</Label>
+                          <Input
+                            key="cliente-empty"
+                            id="cliente-empty"
+                            value={formVenda.cliente}
+                            onChange={handleClienteChange}
+                            placeholder="Nome do cliente"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Vendedor *</Label>
+                          <Select 
+                            key="vendedor-empty"
+                            value={formVenda.vendedorId} 
+                            onValueChange={handleVendedorIdChange}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o vendedor" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {vendedores.map((vendedor, index) => (
+                                <SelectItem key={`vendedor-empty-${index}`} value={vendedor}>
+                                  {vendedor}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Forma de Pagamento *</Label>
+                          <Select 
+                            key="forma-pagamento-empty"
+                            value={formVenda.formaPagamento} 
+                            onValueChange={handleFormaPagamentoChange}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a forma" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                              <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                              <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                              <SelectItem value="pix">PIX</SelectItem>
+                              <SelectItem value="transferencia">Transferência</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="desconto-empty">Desconto (R$)</Label>
+                          <Input
+                            key="desconto-empty"
+                            id="desconto-empty"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formVenda.desconto}
+                            onChange={handleDescontoChange}
+                            placeholder="0,00"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Adicionar Produtos */}
+                      <div className="border rounded-lg p-4 bg-gray-50">
+                        <h4 className="font-semibold mb-3">Adicionar Produtos</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="space-y-2">
+                            <Label>Produto</Label>
+                            <Select key="produto-empty" value={produtoSelecionado} onValueChange={setProdutoSelecionado}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o produto" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {produtos.filter(p => p.quantidade > 0).map((produto) => (
+                                  <SelectItem key={produto.id} value={produto.id}>
+                                    {produto.nome} - Estoque: {produto.quantidade}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="quantidade-empty">Quantidade</Label>
+                            <Input
+                              key="quantidade-empty"
+                              id="quantidade-empty"
+                              type="number"
+                              min="1"
+                              value={quantidadeProduto}
+                              onChange={handleQuantidadeProdutoChange}
+                              placeholder="1"
+                            />
+                          </div>
+                          
+                          <div className="flex items-end">
+                            <Button onClick={adicionarAoCarrinho} className="w-full">
+                              <Plus className="h-4 w-4 mr-2" />
+                              Adicionar
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Carrinho */}
+                      {carrinhoItens.length > 0 && (
+                        <div className="border rounded-lg p-4">
+                          <h4 className="font-semibold mb-3">Itens da Venda</h4>
+                          <div className="space-y-2">
+                            {carrinhoItens.map((item, index) => (
+                              <div key={`carrinho-empty-${item.produtoId}-${index}`} className="flex items-center justify-between p-3 bg-white rounded border">
+                                <div className="flex-1">
+                                  <p className="font-medium">{item.produto}</p>
+                                  <p className="text-sm text-gray-600">
+                                    {item.quantidade}x R$ {item.precoUnitario.toFixed(2)}
+                                  </p>
+                                </div>
+                                <div className="text-right mr-3">
+                                  <p className="font-bold">R$ {item.subtotal.toFixed(2)}</p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removerDoCarrinho(item.produtoId)}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            
+                            <div className="border-t pt-3 mt-3">
+                              <div className="flex justify-between items-center">
+                                <span className="font-semibold">Total:</span>
+                                <span className="font-bold text-lg text-bentin-green">
+                                  R$ {totalCarrinho.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Observações */}
+                      <div className="space-y-2">
+                        <Label htmlFor="observacoes-empty">Observações</Label>
+                        <Textarea
+                          key="observacoes-empty"
+                          id="observacoes-empty"
+                          value={formVenda.observacoes}
+                          onChange={handleObservacoesChange}
+                          placeholder="Observações adicionais sobre a venda..."
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                  </ScrollArea>
                   
-                  <Dialog open={modalNovoVendedor} onOpenChange={setModalNovoVendedor}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="rounded-xl">
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Cadastrar Vendedor
+                  <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setModalNovaVenda(false);
+                        setFormVenda(initialVendaForm);
+                        setCarrinhoItens([]);
+                      }}
+                      disabled={isLoading}
+                      className="order-2 sm:order-1"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={finalizarVenda} 
+                      className="bentin-button-primary order-1 sm:order-2"
+                      disabled={isLoading || carrinhoItens.length === 0}
+                    >
+                      {isLoading ? 'Finalizando...' : `Finalizar Venda (R$ ${totalCarrinho.toFixed(2)})`}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              
+              <Dialog open={modalNovoVendedor} onOpenChange={setModalNovoVendedor}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="rounded-xl">
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Primeiro Vendedor
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="w-[95vw] max-w-md mx-auto">
+                  <DialogHeader>
+                    <DialogTitle>Cadastrar Novo Vendedor</DialogTitle>
+                    <DialogDescription>
+                      Adicione um novo vendedor ao sistema
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nome-vendedor-empty">Nome Completo *</Label>
+                      <Input
+                        key="nome-vendedor-empty"
+                        id="nome-vendedor-empty"
+                        value={formVendedor.nome}
+                        onChange={handleVendedorNomeChange}
+                        placeholder="Ex: Maria Silva"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email-vendedor-empty">Email</Label>
+                      <Input
+                        key="email-vendedor-empty"
+                        id="email-vendedor-empty"
+                        type="email"
+                        value={formVendedor.email}
+                        onChange={handleVendedorEmailChange}
+                        placeholder="maria@email.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="telefone-vendedor-empty">Telefone</Label>
+                      <Input
+                        key="telefone-vendedor-empty"
+                        id="telefone-vendedor-empty"
+                        value={formVendedor.telefone}
+                        onChange={handleVendedorTelefoneChange}
+                        placeholder="(11) 99999-9999"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="comissao-vendedor-empty">Comissão (%)</Label>
+                      <Input
+                        key="comissao-vendedor-empty"
+                        id="comissao-vendedor-empty"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={formVendedor.comissao}
+                        onChange={handleVendedorComissaoChange}
+                        placeholder="5.0"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={handleAdicionarVendedor} className="flex-1" disabled={isLoading}>
+                        {isLoading ? 'Salvando...' : 'Salvar Vendedor'}
                       </Button>
-                    </DialogTrigger>
-                    {/* Modal content será adicionado abaixo */}
-                  </Dialog>
-                </>
-              )}
+                      <Button variant="outline" onClick={() => {
+                        setModalNovoVendedor(false);
+                        setFormVendedor(initialVendedorForm);
+                      }}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardContent>
         </Card>
@@ -467,7 +780,7 @@ const Vendas = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Resumo de Vendas - Responsivo */}
+      {/* Resumo das Vendas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <Card className="bentin-card border-l-4 border-l-bentin-pink">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -499,20 +812,22 @@ const Vendas = () => {
 
         <Card className="bentin-card border-l-4 border-l-bentin-green">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">Vendas no Período</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-700">
+              Vendas ({getPeriodoLabel(periodoFiltro)})
+            </CardTitle>
             <div className="bentin-icon-wrapper bg-bentin-green/10">
               <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-bentin-green" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold text-bentin-green">{estatisticas.totalVendasPeriodo}</div>
-            <p className="text-xs text-gray-600 font-medium">✅ {getPeriodoLabel(periodoFiltro).toLowerCase()}</p>
+            <p className="text-xs text-gray-600 font-medium">📈 vendas no período</p>
           </CardContent>
         </Card>
 
         <Card className="bentin-card border-l-4 border-l-bentin-orange">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">Receita do Período</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-700">Receita Total</CardTitle>
             <div className="bentin-icon-wrapper bg-bentin-orange/10">
               <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-bentin-orange" />
             </div>
@@ -521,7 +836,7 @@ const Vendas = () => {
             <div className="text-xl sm:text-2xl font-bold text-bentin-orange">
               R$ {estatisticas.receitaPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-gray-600 font-medium">💰 {getPeriodoLabel(periodoFiltro).toLowerCase()}</p>
+            <p className="text-xs text-gray-600 font-medium">💰 receita no período</p>
           </CardContent>
         </Card>
       </div>
@@ -533,13 +848,11 @@ const Vendas = () => {
             <div>
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <div className="bentin-icon-wrapper bg-bentin-pink/10">
-                  <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5 text-bentin-pink" />
+                  <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-bentin-pink" />
                 </div>
-                Vendas - {getPeriodoLabel(periodoFiltro)}
+                Vendas Realizadas
               </CardTitle>
-              <CardDescription className="text-sm">
-                {vendasFiltradas.length} de {vendasPorPeriodo.length} vendas no período
-              </CardDescription>
+              <CardDescription className="text-sm">Gerencie e acompanhe todas as vendas</CardDescription>
             </div>
             
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -550,8 +863,74 @@ const Vendas = () => {
                     <span className="sm:inline">Novo Vendedor</span>
                   </Button>
                 </DialogTrigger>
+                <DialogContent className="w-[95vw] max-w-md mx-auto">
+                  <DialogHeader>
+                    <DialogTitle>Cadastrar Novo Vendedor</DialogTitle>
+                    <DialogDescription>
+                      Adicione um novo vendedor ao sistema
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nome-vendedor">Nome Completo *</Label>
+                      <Input
+                        key="nome-vendedor"
+                        id="nome-vendedor"
+                        value={formVendedor.nome}
+                        onChange={handleVendedorNomeChange}
+                        placeholder="Ex: Maria Silva"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email-vendedor">Email</Label>
+                      <Input
+                        key="email-vendedor"
+                        id="email-vendedor"
+                        type="email"
+                        value={formVendedor.email}
+                        onChange={handleVendedorEmailChange}
+                        placeholder="maria@email.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="telefone-vendedor">Telefone</Label>
+                      <Input
+                        key="telefone-vendedor"
+                        id="telefone-vendedor"
+                        value={formVendedor.telefone}
+                        onChange={handleVendedorTelefoneChange}
+                        placeholder="(11) 99999-9999"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="comissao-vendedor">Comissão (%)</Label>
+                      <Input
+                        key="comissao-vendedor"
+                        id="comissao-vendedor"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={formVendedor.comissao}
+                        onChange={handleVendedorComissaoChange}
+                        placeholder="5.0"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={handleAdicionarVendedor} className="flex-1" disabled={isLoading}>
+                        {isLoading ? 'Salvando...' : 'Salvar Vendedor'}
+                      </Button>
+                      <Button variant="outline" onClick={() => {
+                        setModalNovoVendedor(false);
+                        setFormVendedor(initialVendedorForm);
+                      }}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
               </Dialog>
-
+              
               <Dialog open={modalNovaVenda} onOpenChange={setModalNovaVenda}>
                 <DialogTrigger asChild>
                   <Button className="bentin-button-primary w-full sm:w-auto">
@@ -559,19 +938,215 @@ const Vendas = () => {
                     <span className="sm:inline">Nova Venda</span>
                   </Button>
                 </DialogTrigger>
+                <DialogContent className="w-[95vw] max-w-4xl mx-auto max-h-[90vh] overflow-hidden">
+                  <DialogHeader>
+                    <DialogTitle>Registrar Nova Venda</DialogTitle>
+                    <DialogDescription>
+                      Complete os dados da venda e adicione produtos ao carrinho
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[70vh] px-1">
+                    <div className="space-y-6 py-4">
+                      
+                      {/* Dados da Venda */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="cliente-venda">Cliente *</Label>
+                          <Input
+                            key="cliente-venda"
+                            id="cliente-venda"
+                            value={formVenda.cliente}
+                            onChange={handleClienteChange}
+                            placeholder="Nome do cliente"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Vendedor *</Label>
+                          <Select 
+                            key="vendedor-venda"
+                            value={formVenda.vendedorId} 
+                            onValueChange={handleVendedorIdChange}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o vendedor" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {vendedores.map((vendedor, index) => (
+                                <SelectItem key={`vendedor-venda-${index}`} value={vendedor}>
+                                  {vendedor}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Forma de Pagamento *</Label>
+                          <Select 
+                            key="forma-pagamento"
+                            value={formVenda.formaPagamento} 
+                            onValueChange={handleFormaPagamentoChange}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a forma" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                              <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                              <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                              <SelectItem value="pix">PIX</SelectItem>
+                              <SelectItem value="transferencia">Transferência</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="desconto-venda">Desconto (R$)</Label>
+                          <Input
+                            key="desconto-venda"
+                            id="desconto-venda"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formVenda.desconto}
+                            onChange={handleDescontoChange}
+                            placeholder="0,00"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Adicionar Produtos */}
+                      <div className="border rounded-lg p-4 bg-gray-50">
+                        <h4 className="font-semibold mb-3">Adicionar Produtos</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="space-y-2">
+                            <Label>Produto</Label>
+                            <Select key="produto-select" value={produtoSelecionado} onValueChange={setProdutoSelecionado}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o produto" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {produtos.filter(p => p.quantidade > 0).map((produto) => (
+                                  <SelectItem key={produto.id} value={produto.id}>
+                                    {produto.nome} - Estoque: {produto.quantidade}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="quantidade-venda">Quantidade</Label>
+                            <Input
+                              key="quantidade-venda"
+                              id="quantidade-venda"
+                              type="number"
+                              min="1"
+                              value={quantidadeProduto}
+                              onChange={handleQuantidadeProdutoChange}
+                              placeholder="1"
+                            />
+                          </div>
+                          
+                          <div className="flex items-end">
+                            <Button onClick={adicionarAoCarrinho} className="w-full">
+                              <Plus className="h-4 w-4 mr-2" />
+                              Adicionar
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Carrinho */}
+                      {carrinhoItens.length > 0 && (
+                        <div className="border rounded-lg p-4">
+                          <h4 className="font-semibold mb-3">Itens da Venda</h4>
+                          <div className="space-y-2">
+                            {carrinhoItens.map((item, index) => (
+                              <div key={`carrinho-${item.produtoId}-${index}`} className="flex items-center justify-between p-3 bg-white rounded border">
+                                <div className="flex-1">
+                                  <p className="font-medium">{item.produto}</p>
+                                  <p className="text-sm text-gray-600">
+                                    {item.quantidade}x R$ {item.precoUnitario.toFixed(2)}
+                                  </p>
+                                </div>
+                                <div className="text-right mr-3">
+                                  <p className="font-bold">R$ {item.subtotal.toFixed(2)}</p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removerDoCarrinho(item.produtoId)}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            
+                            <div className="border-t pt-3 mt-3">
+                              <div className="flex justify-between items-center">
+                                <span className="font-semibold">Total:</span>
+                                <span className="font-bold text-lg text-bentin-green">
+                                  R$ {totalCarrinho.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Observações */}
+                      <div className="space-y-2">
+                        <Label htmlFor="observacoes-venda">Observações</Label>
+                        <Textarea
+                          key="observacoes-venda"
+                          id="observacoes-venda"
+                          value={formVenda.observacoes}
+                          onChange={handleObservacoesChange}
+                          placeholder="Observações adicionais sobre a venda..."
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                  </ScrollArea>
+                  
+                  <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setModalNovaVenda(false);
+                        setFormVenda(initialVendaForm);
+                        setCarrinhoItens([]);
+                      }}
+                      disabled={isLoading}
+                      className="order-2 sm:order-1"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={finalizarVenda} 
+                      className="bentin-button-primary order-1 sm:order-2"
+                      disabled={isLoading || carrinhoItens.length === 0}
+                    >
+                      {isLoading ? 'Finalizando...' : `Finalizar Venda (R$ ${totalCarrinho.toFixed(2)})`}
+                    </Button>
+                  </div>
+                </DialogContent>
               </Dialog>
             </div>
           </div>
         </CardHeader>
         
         <CardContent>
-          {/* Filtros Responsivos */}
+          {/* Filtros */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Pesquisar por número ou cliente..."
+                  placeholder="Pesquisar vendas..."
                   value={filtro}
                   onChange={(e) => setFiltro(e.target.value)}
                   className="pl-9"
@@ -579,137 +1154,112 @@ const Vendas = () => {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:flex sm:gap-4">
-              <Select value={periodoFiltro} onValueChange={setPeriodoFiltro}>
-                <SelectTrigger className="w-full sm:w-36">
-                  <CalendarDays className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="periodo-hoje" value="hoje">Hoje</SelectItem>
-                  <SelectItem key="periodo-7dias" value="7dias">7 dias</SelectItem>
-                  <SelectItem key="periodo-30dias" value="30dias">30 dias</SelectItem>
-                  <SelectItem key="periodo-90dias" value="90dias">90 dias</SelectItem>
-                  <SelectItem key="periodo-mes" value="mes">Este mês</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={statusFiltro} onValueChange={setStatusFiltro}>
-                <SelectTrigger className="w-full sm:w-36">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="status-todos" value="todos">Todos</SelectItem>
-                  <SelectItem key="status-concluida" value="concluida">Concluída</SelectItem>
-                  <SelectItem key="status-pendente" value="pendente">Pendente</SelectItem>
-                  <SelectItem key="status-cancelada" value="cancelada">Cancelada</SelectItem>
-                </SelectContent>
-              </Select>
-
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-4">
               <Select value={vendedorFiltro} onValueChange={setVendedorFiltro}>
-                <SelectTrigger className="w-full sm:w-40 col-span-2 sm:col-span-1">
-                  <Users className="h-4 w-4 mr-2" />
-                  <SelectValue />
+                <SelectTrigger className="w-full sm:w-40">
+                  <SelectValue placeholder="Vendedor" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem key="vendedor-todos" value="todos">Todos vendedores</SelectItem>
+                  <SelectItem value="todos">Todos</SelectItem>
                   {vendedores.map((vendedor, index) => (
-                    <SelectItem key={`vendedor-${index}-${vendedor}`} value={vendedor}>
+                    <SelectItem key={`filtro-vendedor-${index}`} value={vendedor}>
                       {vendedor}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+
+              <Select value={periodoFiltro} onValueChange={setPeriodoFiltro}>
+                <SelectTrigger className="w-full sm:w-40">
+                  <SelectValue placeholder="Período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hoje">Hoje</SelectItem>
+                  <SelectItem value="7dias">7 dias</SelectItem>
+                  <SelectItem value="30dias">30 dias</SelectItem>
+                  <SelectItem value="90dias">90 dias</SelectItem>
+                  <SelectItem value="mes">Este mês</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {/* Tabela Responsiva */}
+          {/* Tabela de Vendas */}
           <div className="border rounded-2xl border-border/50 overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[100px]">Número</TableHead>
-                    <TableHead className="hidden sm:table-cell">Data</TableHead>
+                    <TableHead>Data/Hora</TableHead>
                     <TableHead>Cliente</TableHead>
-                    <TableHead className="hidden md:table-cell">Vendedor</TableHead>
+                    <TableHead>Produto</TableHead>
+                    <TableHead>Vendedor</TableHead>
+                    <TableHead>Quantidade</TableHead>
                     <TableHead>Total</TableHead>
-                    <TableHead className="hidden lg:table-cell">Pagamento</TableHead>
-                    <TableHead className="hidden md:table-cell">Status</TableHead>
-                    <TableHead className="text-center w-[80px]">Ações</TableHead>
+                    <TableHead className="hidden md:table-cell">Pagamento</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {vendasFiltradas.length > 0 ? (
                     vendasFiltradas.map((venda) => (
                       <TableRow key={venda.id} className="hover:bg-muted/50">
-                        <TableCell className="font-medium">{venda.numero}</TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          {new Date(venda.data).toLocaleDateString('pt-BR')}
-                        </TableCell>
                         <TableCell>
                           <div>
-                            <p className="font-medium leading-tight">{venda.cliente}</p>
-                            <div className="flex flex-wrap gap-1 mt-1 sm:hidden">
-                              <Badge variant="outline" className="text-xs">
-                                {new Date(venda.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs md:hidden">
-                                {venda.vendedor}
-                              </Badge>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">{venda.vendedor}</TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-bold text-bentin-green">
-                              R$ {venda.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            <p className="text-sm font-medium">
+                              {new Date(venda.data).toLocaleDateString('pt-BR')}
                             </p>
-                            <div className="md:hidden mt-1">
-                              {getStatusBadge(venda.status)}
-                            </div>
-                            <div className="lg:hidden text-xs text-muted-foreground mt-1">
-                              {venda.formaPagamento}
-                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(venda.data).toLocaleTimeString('pt-BR', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
+                            </p>
                           </div>
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          <Badge variant="outline" className="capitalize">
-                            {venda.formaPagamento}
+                        
+                        <TableCell>
+                          <p className="font-medium text-sm">
+                            {(venda as any).cliente || 'Cliente não informado'}
+                          </p>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <p className="font-medium text-sm">{venda.nomeProduto}</p>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {venda.vendedor}
                           </Badge>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {getStatusBadge(venda.status)}
-                        </TableCell>
+                        
                         <TableCell>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => {
-                              setVendaSelecionada(venda);
-                              setModalDetalhesVenda(true);
-                            }}
-                            className="p-2 h-8 w-8"
-                            aria-label="Ver detalhes"
-                          >
-                            <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                          </Button>
+                          <span className="text-sm font-medium">{venda.quantidade}</span>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <p className="font-bold text-sm text-bentin-green">
+                            R$ {venda.precoTotal.toFixed(2)}
+                          </p>
+                        </TableCell>
+                        
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant="secondary" className="text-xs">
+                            {venda.formaPagamento?.replace('_', ' ') || 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        
+                        <TableCell className="text-center">
+                          {getStatusBadge((venda as any).status || 'concluida')}
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
-                        <div className="flex flex-col items-center gap-2">
-                          <Search className="h-8 w-8 text-muted-foreground/50" />
-                          <p className="text-sm text-muted-foreground">
-                            {filtro || statusFiltro !== 'todos' || vendedorFiltro !== 'todos' 
-                              ? 'Nenhuma venda encontrada com os filtros aplicados' 
-                              : `Nenhuma venda encontrada em ${getPeriodoLabel(periodoFiltro).toLowerCase()}`}
-                          </p>
-                        </div>
+                      <TableCell colSpan={8} className="text-center py-6">
+                        <ShoppingCart className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm text-gray-500">Nenhuma venda encontrada</p>
                       </TableCell>
                     </TableRow>
                   )}
@@ -719,8 +1269,6 @@ const Vendas = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Modais serão implementados nas próximas interações devido ao limite de caracteres */}
     </div>
   );
 };

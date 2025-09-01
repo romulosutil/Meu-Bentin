@@ -14,7 +14,6 @@ import {
   DollarSign, 
   TrendingUp, 
   TrendingDown, 
-  Download, 
   BarChart3, 
   Wallet,
   PiggyBank,
@@ -45,14 +44,14 @@ const Receita = () => {
   
   // Estado do capital de giro
   const [capitalGiro, setCapitalGiro] = useState<CapitalGiro | null>(() => {
-    const stored = localStorage.getItem('capitalGiro');
+    const stored = localStorage.getItem('meuBentin-capitalGiro');
     return stored ? JSON.parse(stored) : null;
   });
 
   // Salvar capital de giro no localStorage
   useEffect(() => {
     if (capitalGiro) {
-      localStorage.setItem('capitalGiro', JSON.stringify(capitalGiro));
+      localStorage.setItem('meuBentin-capitalGiro', JSON.stringify(capitalGiro));
     }
   }, [capitalGiro]);
 
@@ -95,30 +94,48 @@ const Receita = () => {
     
     // Valor total do estoque atual
     const valorEstoque = produtos.reduce((total, produto) => {
-      const preco = produto.emPromocao && produto.precoPromocional 
-        ? produto.precoPromocional 
+      const preco = (produto as any).emPromocao && (produto as any).precoPromocional 
+        ? (produto as any).precoPromocional 
         : produto.preco;
       return total + (preco * produto.quantidade);
     }, 0);
 
-    // Capital de giro atual (estimativa)
+    // Capital de giro atual (estimativa ou valor configurado)
     const capitalAtual = capitalGiro ? capitalGiro.valorInicial : valorEstoque * 0.7;
     
     // Giro de estoque (receita / valor médio do estoque)
     const giroEstoque = valorEstoque > 0 ? receitaTotal / valorEstoque : 0;
 
-    // Análise de crescimento (últimos 30 vs 30 dias anteriores)
+    // Análise de crescimento (período atual vs período anterior)
     const hoje = new Date();
-    const inicio30DiasPrev = new Date(hoje.getTime() - 60 * 24 * 60 * 60 * 1000);
-    const fim30DiasPrev = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
+    let inicioComparacao: Date;
+    let fimComparacao: Date;
+
+    switch (periodo) {
+      case '7dias':
+        inicioComparacao = new Date(hoje.getTime() - 14 * 24 * 60 * 60 * 1000);
+        fimComparacao = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30dias':
+        inicioComparacao = new Date(hoje.getTime() - 60 * 24 * 60 * 60 * 1000);
+        fimComparacao = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90dias':
+        inicioComparacao = new Date(hoje.getTime() - 180 * 24 * 60 * 60 * 1000);
+        fimComparacao = new Date(hoje.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        inicioComparacao = new Date(hoje.getTime() - 60 * 24 * 60 * 60 * 1000);
+        fimComparacao = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
     
-    const vendas30DiasPrev = vendas.filter(venda => {
+    const vendasComparacao = vendas.filter(venda => {
       const dataVenda = new Date(venda.data);
-      return dataVenda >= inicio30DiasPrev && dataVenda < fim30DiasPrev;
+      return dataVenda >= inicioComparacao && dataVenda < fimComparacao;
     });
     
-    const receita30DiasPrev = vendas30DiasPrev.reduce((total, venda) => total + venda.precoTotal, 0);
-    const crescimento = receita30DiasPrev > 0 ? ((receitaTotal - receita30DiasPrev) / receita30DiasPrev) * 100 : 0;
+    const receitaComparacao = vendasComparacao.reduce((total, venda) => total + venda.precoTotal, 0);
+    const crescimento = receitaComparacao > 0 ? ((receitaTotal - receitaComparacao) / receitaComparacao) * 100 : 0;
 
     return {
       receitaTotal,
@@ -129,32 +146,36 @@ const Receita = () => {
       giroEstoque,
       crescimento
     };
-  }, [dadosPeriodo, produtos, capitalGiro, vendas]);
+  }, [dadosPeriodo, produtos, capitalGiro, vendas, periodo]);
 
   // Dados para gráficos
   const dadosGraficos = useMemo(() => {
     if (dadosPeriodo.length === 0) return { evolucao: [], formasPagamento: [], categorias: [] };
 
-    // Agrupar vendas por semana para evolução
-    const vendasPorSemana = dadosPeriodo.reduce((acc, venda) => {
+    // Agrupar vendas por dia para evolução
+    const vendasPorDia = dadosPeriodo.reduce((acc, venda) => {
       const dataVenda = new Date(venda.data);
-      const semana = `${dataVenda.getDate()}/${dataVenda.getMonth() + 1}`;
+      const dia = dataVenda.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
       
-      if (!acc[semana]) {
-        acc[semana] = { semana, receita: 0, vendas: 0 };
+      if (!acc[dia]) {
+        acc[dia] = { dia, receita: 0, vendas: 0 };
       }
       
-      acc[semana].receita += venda.precoTotal;
-      acc[semana].vendas += 1;
+      acc[dia].receita += venda.precoTotal;
+      acc[dia].vendas += 1;
       
       return acc;
-    }, {} as Record<string, { semana: string; receita: number; vendas: number }>);
+    }, {} as Record<string, { dia: string; receita: number; vendas: number }>);
 
-    const evolucao = Object.values(vendasPorSemana).slice(-8); // Últimas 8 semanas
+    const evolucao = Object.values(vendasPorDia).sort((a, b) => {
+      const [diaA, mesA] = a.dia.split('/').map(Number);
+      const [diaB, mesB] = b.dia.split('/').map(Number);
+      return mesA - mesB || diaA - diaB;
+    }).slice(-10); // Últimos 10 dias
 
     // Agrupar por formas de pagamento
     const formasPagamento = dadosPeriodo.reduce((acc, venda) => {
-      const forma = venda.formaPagamento;
+      const forma = venda.formaPagamento || 'Não informado';
       if (!acc[forma]) {
         acc[forma] = { nome: forma, valor: 0 };
       }
@@ -177,7 +198,7 @@ const Receita = () => {
     return {
       evolucao,
       formasPagamento: Object.values(formasPagamento),
-      categorias: Object.values(categorias)
+      categorias: Object.values(categorias).sort((a, b) => b.receita - a.receita)
     };
   }, [dadosPeriodo, produtos]);
 
@@ -239,6 +260,78 @@ const Receita = () => {
 
   // Cores para gráficos
   const CORES = ['#e91e63', '#2196f3', '#4caf50', '#ff6b35', '#9c27b0'];
+
+  // Modal de configuração de capital de giro
+  const ModalCapitalGiro = () => (
+    <Dialog open={modalCapitalGiro} onOpenChange={setModalCapitalGiro}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Settings className="h-4 w-4 mr-2" />
+          Capital
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="w-[95vw] max-w-md mx-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <PiggyBank className="h-5 w-5 text-bentin-orange" />
+            Capital de Giro
+          </DialogTitle>
+          <DialogDescription>
+            {capitalGiro 
+              ? 'Ajuste o valor do seu capital de giro'
+              : 'Defina o valor inicial do seu capital de giro'
+            }
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="capitalInicial">Valor do Capital de Giro (R$)</Label>
+            <Input 
+              id="capitalInicial" 
+              type="number"
+              step="0.01"
+              min="1000"
+              value={valorCapitalGiro}
+              onChange={(e) => setValorCapitalGiro(e.target.value)}
+              placeholder={capitalGiro ? capitalGiro.valorInicial.toString() : "Ex: 50000.00"}
+              className="text-lg"
+            />
+            <p className="text-xs text-muted-foreground">
+              💡 Inclua o valor investido em estoque, reservas e capital operacional
+            </p>
+          </div>
+          
+          {!capitalGiro && (
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-blue-800">O que é Capital de Giro?</p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    É o dinheiro disponível para as operações do dia a dia da loja, como compra de mercadorias, pagamento de fornecedores e despesas operacionais.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setModalCapitalGiro(false)} disabled={isLoading}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={configurarCapitalGiro} 
+            className="bentin-button-primary"
+            disabled={isLoading || !valorCapitalGiro}
+          >
+            {isLoading ? 'Configurando...' : 'Configurar'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 
   // Estado sem dados ou capital de giro
   if (vendas.length === 0 || !capitalGiro) {
@@ -316,72 +409,15 @@ const Receita = () => {
             </p>
             
             {!capitalGiro && (
-              <Dialog open={modalCapitalGiro} onOpenChange={setModalCapitalGiro}>
-                <DialogTrigger asChild>
-                  <Button className="bentin-button-primary">
-                    <Wallet className="h-4 w-4 mr-2" />
-                    Configurar Capital de Giro
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="w-[95vw] max-w-md mx-auto">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <PiggyBank className="h-5 w-5 text-bentin-orange" />
-                      Capital de Giro Inicial
-                    </DialogTitle>
-                    <DialogDescription>
-                      Defina o valor que você tem disponível para investir na loja. Este será usado para calcular indicadores financeiros.
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="capitalInicial">Valor do Capital de Giro (R$)</Label>
-                      <Input 
-                        id="capitalInicial" 
-                        type="number"
-                        step="0.01"
-                        min="1000"
-                        value={valorCapitalGiro}
-                        onChange={(e) => setValorCapitalGiro(e.target.value)}
-                        placeholder="Ex: 50000.00"
-                        className="text-lg"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        💡 Inclua o valor investido em estoque, reservas e capital operacional
-                      </p>
-                    </div>
-                    
-                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium text-blue-800">O que é Capital de Giro?</p>
-                          <p className="text-xs text-blue-700 mt-1">
-                            É o dinheiro disponível para as operações do dia a dia da loja, como compra de mercadorias, pagamento de fornecedores e despesas operacionais.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setModalCapitalGiro(false)} disabled={isLoading}>
-                      Cancelar
-                    </Button>
-                    <Button 
-                      onClick={configurarCapitalGiro} 
-                      className="bentin-button-primary"
-                      disabled={isLoading || !valorCapitalGiro}
-                    >
-                      {isLoading ? 'Configurando...' : 'Configurar'}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button className="bentin-button-primary" onClick={() => setModalCapitalGiro(true)}>
+                <Wallet className="h-4 w-4 mr-2" />
+                Configurar Capital de Giro
+              </Button>
             )}
           </CardContent>
         </Card>
+
+        <ModalCapitalGiro />
       </div>
     );
   }
@@ -487,15 +523,7 @@ const Receita = () => {
                 </SelectContent>
               </Select>
 
-              <Dialog open={modalCapitalGiro} onOpenChange={setModalCapitalGiro}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Capital
-                  </Button>
-                </DialogTrigger>
-                {/* Reutilizar o modal de configuração acima */}
-              </Dialog>
+              <ModalCapitalGiro />
             </div>
           </div>
         </CardHeader>
@@ -519,7 +547,7 @@ const Receita = () => {
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={dadosGraficos.evolucao}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="semana" tick={{ fontSize: 12 }} />
+                  <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip 
                     formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`, 'Receita']}
@@ -595,7 +623,7 @@ const Receita = () => {
         </Card>
       </div>
 
-      {/* Receita por Categoria e Resumo Financeiro */}
+      {/* Receita por Categoria e Indicadores Financeiros */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Receita por Categoria */}
         <Card className="bentin-card">
@@ -634,61 +662,85 @@ const Receita = () => {
           </CardContent>
         </Card>
 
-        {/* Resumo Financeiro */}
+        {/* Indicadores Financeiros */}
         <Card className="bentin-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <div className="bentin-icon-wrapper bg-bentin-orange/10">
                 <Calculator className="h-4 w-4 sm:h-5 sm:w-5 text-bentin-orange" />
               </div>
-              Resumo Financeiro
+              Indicadores Financeiros
             </CardTitle>
-            <CardDescription>Análise do período selecionado</CardDescription>
+            <CardDescription>Análise detalhada da performance</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-gradient-to-r from-bentin-blue/10 to-bentin-pink/10 p-4 rounded-xl">
-              <h4 className="font-medium mb-3 text-gray-800">💰 Indicadores</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">💵 Receita Bruta:</span>
-                  <span className="font-medium text-bentin-blue">
-                    R$ {metricas.receitaTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-                  </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Wallet className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-semibold text-blue-800">Valor do Estoque</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">📦 Valor do Estoque:</span>
-                  <span className="font-medium text-bentin-orange">
-                    R$ {metricas.valorEstoque.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-                  </span>
+                <p className="text-lg font-bold text-blue-600">
+                  R$ {metricas.valorEstoque.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+                <p className="text-xs text-blue-700">Investimento atual em produtos</p>
+              </div>
+
+              <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-semibold text-green-800">Giro do Estoque</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">🔄 Giro do Estoque:</span>
-                  <span className="font-medium text-gray-600">
-                    {metricas.giroEstoque.toFixed(2)}x
-                  </span>
+                <p className="text-lg font-bold text-green-600">
+                  {metricas.giroEstoque.toFixed(2)}x
+                </p>
+                <p className="text-xs text-green-700">Velocidade de rotação</p>
+              </div>
+
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Calculator className="h-4 w-4 text-purple-600" />
+                  <span className="text-sm font-semibold text-purple-800">ROI do Período</span>
                 </div>
-                <div className="flex justify-between font-medium border-t border-border/50 pt-2">
-                  <span className="text-gray-800">🏦 Capital de Giro:</span>
-                  <span className="text-bentin-green font-bold">
-                    R$ {metricas.capitalAtual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-                  </span>
+                <p className="text-lg font-bold text-purple-600">
+                  {metricas.capitalAtual > 0 ? ((metricas.receitaTotal / metricas.capitalAtual) * 100).toFixed(1) : '0'}%
+                </p>
+                <p className="text-xs text-purple-700">Retorno sobre investimento</p>
+              </div>
+
+              <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="h-4 w-4 text-orange-600" />
+                  <span className="text-sm font-semibold text-orange-800">Margem Bruta Est.</span>
                 </div>
+                <p className="text-lg font-bold text-orange-600">
+                  40%
+                </p>
+                <p className="text-xs text-orange-700">Estimativa baseada no preço</p>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <Button className="w-full justify-start rounded-xl border-bentin-blue text-bentin-blue hover:bg-bentin-blue/10" variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                📊 Relatório de Receita
-              </Button>
-              <Button className="w-full justify-start rounded-xl border-bentin-pink text-bentin-pink hover:bg-bentin-pink/10" variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                💳 Relatório de Pagamentos
-              </Button>
-              <Button className="w-full justify-start rounded-xl border-bentin-green text-bentin-green hover:bg-bentin-green/10" variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                🏷️ Relatório por Categoria
-              </Button>
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border-l-4 border-l-bentin-blue">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-4 w-4 text-bentin-blue" />
+                <span className="text-sm font-semibold text-gray-800">Resumo do Período</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div>
+                  <span className="text-gray-600">Vendas: </span>
+                  <span className="font-semibold">{metricas.numeroVendas}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Ticket médio: </span>
+                  <span className="font-semibold">R$ {metricas.ticketMedio.toFixed(2)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Crescimento: </span>
+                  <span className={`font-semibold ${metricas.crescimento >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {metricas.crescimento >= 0 ? '+' : ''}{metricas.crescimento.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

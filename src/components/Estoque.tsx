@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from './ui/checkbox';
 import { Textarea } from './ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { Plus, Search, Edit, Package, AlertTriangle, DollarSign, TrendingUp, Minus, Trash2, Filter, MoreHorizontal } from 'lucide-react';
+import { Plus, Search, Edit, Package, AlertTriangle, DollarSign, Minus, Trash2, Filter, MoreHorizontal } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
+import { useToast } from './ToastProvider';
 
 interface FormState {
   nome: string;
@@ -43,19 +44,21 @@ const Estoque = () => {
     actions
   } = useEstoque();
 
+  const { addToast } = useToast();
+
   // Estados para filtros
   const [filtro, setFiltro] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState('todos');
   const [statusFiltro, setStatusFiltro] = useState('todos');
   
-  // Estados dos modais
+  // Estados dos modais - com keys únicos para evitar conflitos
   const [modalNovoProduto, setModalNovoProduto] = useState(false);
   const [modalEditarProduto, setModalEditarProduto] = useState(false);
   const [modalAdicionarEstoque, setModalAdicionarEstoque] = useState(false);
   const [modalRegistrarPerda, setModalRegistrarPerda] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
 
-  // Estados dos formulários
+  // Estados dos formulários - separados para evitar conflitos
   const [formNovoProduto, setFormNovoProduto] = useState<FormState>(initialFormState);
   const [formEditarProduto, setFormEditarProduto] = useState<FormState>(initialFormState);
 
@@ -70,35 +73,76 @@ const Estoque = () => {
     setFormNovoProduto(initialFormState);
   }, []);
 
-  // Função para adicionar novo produto com validação melhorada
+  // Validação melhorada
+  const validarFormulario = useCallback((form: FormState, isEdicao = false) => {
+    const erros: string[] = [];
+
+    if (!form.nome.trim()) erros.push('Nome do produto é obrigatório');
+    if (!form.categoria && !form.novaCategoria.trim()) erros.push('Selecione ou crie uma categoria');
+    
+    const preco = parseFloat(form.preco);
+    if (isNaN(preco) || preco <= 0) erros.push('Preço deve ser maior que zero');
+    
+    if (!isEdicao) {
+      const quantidade = parseInt(form.quantidade);
+      if (isNaN(quantidade) || quantidade < 0) erros.push('Quantidade deve ser um número válido');
+    }
+    
+    const estoqueMinimo = parseInt(form.estoqueMinimo);
+    if (isNaN(estoqueMinimo) || estoqueMinimo <= 0) erros.push('Estoque mínimo deve ser maior que zero');
+
+    if (form.emPromocao && form.precoPromocional) {
+      const precoPromo = parseFloat(form.precoPromocional);
+      if (isNaN(precoPromo) || precoPromo <= 0 || precoPromo >= preco) {
+        erros.push('Preço promocional deve ser menor que o preço normal');
+      }
+    }
+
+    return erros;
+  }, []);
+
+  // Handlers memoizados para evitar re-criação
+  const handleNomeNovoProdutoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormNovoProduto(prev => ({...prev, nome: e.target.value}));
+  }, []);
+
+  const handleCategoriaNovoProdutoChange = useCallback((value: string) => {
+    setFormNovoProduto(prev => ({...prev, categoria: value, novaCategoria: ''}));
+  }, []);
+
+  const handleNovaCategoriaChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormNovoProduto(prev => ({...prev, novaCategoria: e.target.value, categoria: ''}));
+  }, []);
+
+  const handlePrecoNovoProdutoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormNovoProduto(prev => ({...prev, preco: e.target.value}));
+  }, []);
+
+  const handlePrecoPromocionalChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormNovoProduto(prev => ({...prev, precoPromocional: e.target.value}));
+  }, []);
+
+  const handlePromocaoChange = useCallback((checked: boolean) => {
+    setFormNovoProduto(prev => ({...prev, emPromocao: checked}));
+  }, []);
+
+  const handleQuantidadeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormNovoProduto(prev => ({...prev, quantidade: e.target.value}));
+  }, []);
+
+  const handleEstoqueMinimoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormNovoProduto(prev => ({...prev, estoqueMinimo: e.target.value}));
+  }, []);
+
+  // Função para adicionar novo produto
   const handleAdicionarProduto = useCallback(async () => {
-    if (!formNovoProduto.nome.trim() || !formNovoProduto.preco || !formNovoProduto.quantidade || !formNovoProduto.estoqueMinimo) {
-      alert('Preencha todos os campos obrigatórios!');
-      return;
-    }
-
-    if (!formNovoProduto.categoria && !formNovoProduto.novaCategoria) {
-      alert('Selecione uma categoria ou crie uma nova!');
-      return;
-    }
-
-    // Validação de números
-    const preco = parseFloat(formNovoProduto.preco);
-    const quantidade = parseInt(formNovoProduto.quantidade);
-    const estoqueMinimo = parseInt(formNovoProduto.estoqueMinimo);
-    
-    if (isNaN(preco) || preco <= 0) {
-      alert('Preço deve ser um número válido maior que zero!');
-      return;
-    }
-    
-    if (isNaN(quantidade) || quantidade < 0) {
-      alert('Quantidade deve ser um número válido maior ou igual a zero!');
-      return;
-    }
-    
-    if (isNaN(estoqueMinimo) || estoqueMinimo <= 0) {
-      alert('Estoque mínimo deve ser um número válido maior que zero!');
+    const erros = validarFormulario(formNovoProduto, false);
+    if (erros.length > 0) {
+      addToast({
+        type: 'error',
+        title: 'Erro na validação',
+        description: erros.join(', ')
+      });
       return;
     }
 
@@ -114,27 +158,90 @@ const Estoque = () => {
       await actions.adicionarProduto({
         nome: formNovoProduto.nome.trim(),
         categoria: categoriaFinal,
-        preco: preco,
-        custo: preco * 0.6, // Custo padrão estimado em 60% do preço
-        quantidade: quantidade,
-        minimo: estoqueMinimo,
+        preco: parseFloat(formNovoProduto.preco),
+        custo: parseFloat(formNovoProduto.preco) * 0.6, // Custo estimado em 60% do preço
+        quantidade: parseInt(formNovoProduto.quantidade),
+        minimo: parseInt(formNovoProduto.estoqueMinimo),
         vendedor: 'Naila', // Vendedor padrão
         ativo: true,
         emPromocao: formNovoProduto.emPromocao,
         precoPromocional: formNovoProduto.precoPromocional ? parseFloat(formNovoProduto.precoPromocional) : undefined,
-        estoqueMinimo: estoqueMinimo
+        estoqueMinimo: parseInt(formNovoProduto.estoqueMinimo)
       });
 
       limparFormNovoProduto();
       setModalNovoProduto(false);
-      alert('Produto adicionado com sucesso!');
+      addToast({
+        type: 'success',
+        title: 'Produto adicionado',
+        description: 'Produto cadastrado com sucesso!'
+      });
     } catch (error) {
       console.error('Erro ao adicionar produto:', error);
-      alert('Erro ao adicionar produto. Tente novamente.');
+      addToast({
+        type: 'error',
+        title: 'Erro ao adicionar produto',
+        description: 'Tente novamente.'
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [formNovoProduto, actions, limparFormNovoProduto]);
+  }, [formNovoProduto, actions, limparFormNovoProduto, validarFormulario, addToast]);
+
+  // Função para editar produto
+  const handleEditarProduto = useCallback(async () => {
+    if (!produtoSelecionado) return;
+    
+    const erros = validarFormulario(formEditarProduto, true);
+    if (erros.length > 0) {
+      addToast({
+        type: 'error',
+        title: 'Erro na validação',
+        description: erros.join(', ')
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      let categoriaFinal = formEditarProduto.categoria;
+      
+      if (formEditarProduto.novaCategoria.trim()) {
+        await actions.adicionarCategoria(formEditarProduto.novaCategoria.trim());
+        categoriaFinal = formEditarProduto.novaCategoria.trim();
+      }
+
+      const produtoAtualizado: Produto = {
+        ...produtoSelecionado,
+        nome: formEditarProduto.nome.trim(),
+        categoria: categoriaFinal,
+        preco: parseFloat(formEditarProduto.preco),
+        minimo: parseInt(formEditarProduto.estoqueMinimo),
+        emPromocao: formEditarProduto.emPromocao,
+        precoPromocional: formEditarProduto.precoPromocional ? parseFloat(formEditarProduto.precoPromocional) : undefined,
+        estoqueMinimo: parseInt(formEditarProduto.estoqueMinimo),
+        dataAtualizacao: new Date().toISOString()
+      };
+
+      await actions.atualizarProduto(produtoAtualizado);
+      setModalEditarProduto(false);
+      setProdutoSelecionado(null);
+      addToast({
+        type: 'success',
+        title: 'Produto atualizado',
+        description: 'Alterações salvas com sucesso!'
+      });
+    } catch (error) {
+      console.error('Erro ao editar produto:', error);
+      addToast({
+        type: 'error',
+        title: 'Erro ao editar produto',
+        description: 'Tente novamente.'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [formEditarProduto, produtoSelecionado, actions, validarFormulario, addToast]);
 
   // Função para abrir modal de edição
   const abrirModalEdicao = useCallback((produto: Produto) => {
@@ -152,7 +259,113 @@ const Estoque = () => {
     setModalEditarProduto(true);
   }, []);
 
-  // Funções auxiliares com memoização
+  // Função para adicionar estoque
+  const handleAdicionarEstoque = useCallback(async () => {
+    if (!produtoSelecionado || !quantidadeAdicionar) return;
+
+    const quantidade = parseInt(quantidadeAdicionar);
+    if (isNaN(quantidade) || quantidade <= 0) {
+      addToast({
+        type: 'error',
+        title: 'Quantidade inválida',
+        description: 'Digite uma quantidade válida'
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await actions.adicionarEstoque(produtoSelecionado.id, quantidade);
+      setModalAdicionarEstoque(false);
+      setQuantidadeAdicionar('');
+      setProdutoSelecionado(null);
+      addToast({
+        type: 'success',
+        title: 'Estoque atualizado',
+        description: `${quantidade} unidades adicionadas`
+      });
+    } catch (error) {
+      console.error('Erro ao adicionar estoque:', error);
+      addToast({
+        type: 'error',
+        title: 'Erro ao adicionar estoque',
+        description: 'Tente novamente.'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [produtoSelecionado, quantidadeAdicionar, actions, addToast]);
+
+  // Função para registrar perda
+  const handleRegistrarPerda = useCallback(async () => {
+    if (!produtoSelecionado || !quantidadePerda) return;
+
+    const quantidade = parseInt(quantidadePerda);
+    if (isNaN(quantidade) || quantidade <= 0) {
+      addToast({
+        type: 'error',
+        title: 'Quantidade inválida',
+        description: 'Digite uma quantidade válida'
+      });
+      return;
+    }
+
+    if (quantidade > produtoSelecionado.quantidade) {
+      addToast({
+        type: 'error',
+        title: 'Quantidade excede estoque',
+        description: 'Não é possível registrar perda maior que o estoque atual'
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await actions.registrarPerda(produtoSelecionado.id, quantidade, motivoPerda);
+      setModalRegistrarPerda(false);
+      setQuantidadePerda('');
+      setMotivoPerda('');
+      setProdutoSelecionado(null);
+      addToast({
+        type: 'success',
+        title: 'Perda registrada',
+        description: `${quantidade} unidades registradas como perda`
+      });
+    } catch (error) {
+      console.error('Erro ao registrar perda:', error);
+      addToast({
+        type: 'error',
+        title: 'Erro ao registrar perda',
+        description: 'Tente novamente.'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [produtoSelecionado, quantidadePerda, motivoPerda, actions, addToast]);
+
+  // Função para remover produto
+  const handleRemoverProduto = useCallback(async (produto: Produto) => {
+    setIsLoading(true);
+    try {
+      await actions.removerProduto(produto.id);
+      addToast({
+        type: 'success',
+        title: 'Produto removido',
+        description: 'Produto removido com sucesso'
+      });
+    } catch (error) {
+      console.error('Erro ao remover produto:', error);
+      addToast({
+        type: 'error',
+        title: 'Erro ao remover produto',
+        description: 'Tente novamente.'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [actions, addToast]);
+
+  // Produtos filtrados com memoização
   const produtosFiltrados = useMemo(() => {
     return produtos.filter(produto => {
       const matchFiltro = produto.nome.toLowerCase().includes(filtro.toLowerCase());
@@ -209,7 +422,7 @@ const Estoque = () => {
     return { totalProdutos, produtosBaixoEstoque, valorTotalEstoque };
   }, [produtos, getPrecoExibicao]);
 
-  // Estados vazios para mobile
+  // Estado vazio para quando não há produtos
   if (produtos.length === 0) {
     return (
       <div className="space-y-4 sm:space-y-6">
@@ -289,11 +502,12 @@ const Estoque = () => {
                   <div className="space-y-4 py-4">
                     {/* Nome */}
                     <div className="space-y-2">
-                      <Label htmlFor="nome">Nome do Produto *</Label>
+                      <Label htmlFor="nome-empty">Nome do Produto *</Label>
                       <Input 
-                        id="nome" 
+                        key="nome-empty"
+                        id="nome-empty" 
                         value={formNovoProduto.nome}
-                        onChange={(e) => setFormNovoProduto(prev => ({...prev, nome: e.target.value}))}
+                        onChange={handleNomeNovoProdutoChange}
                         placeholder="Ex: Camiseta Infantil Unicórnio"
                       />
                     </div>
@@ -302,37 +516,40 @@ const Estoque = () => {
                     <div className="space-y-2">
                       <Label>Categoria *</Label>
                       <Select 
+                        key="categoria-empty"
                         value={formNovoProduto.categoria} 
-                        onValueChange={(value) => setFormNovoProduto(prev => ({...prev, categoria: value, novaCategoria: ''}))}
+                        onValueChange={handleCategoriaNovoProdutoChange}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione uma categoria" />
                         </SelectTrigger>
                         <SelectContent>
                           {categorias.map((categoria, index) => (
-                            <SelectItem key={`categoria-${index}-${categoria}`} value={categoria}>
+                            <SelectItem key={`categoria-empty-${index}-${categoria}`} value={categoria}>
                               {categoria}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                       <Input
+                        key="nova-categoria-empty"
                         placeholder="Ou criar nova categoria"
                         value={formNovoProduto.novaCategoria}
-                        onChange={(e) => setFormNovoProduto(prev => ({...prev, novaCategoria: e.target.value, categoria: ''}))}
+                        onChange={handleNovaCategoriaChange}
                       />
                     </div>
 
-                    {/* Preço e Promoção */}
+                    {/* Preços */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="preco">Preço *</Label>
+                        <Label htmlFor="preco-empty">Preço *</Label>
                         <Input 
-                          id="preco" 
+                          key="preco-empty"
+                          id="preco-empty" 
                           type="number" 
                           step="0.01" 
                           value={formNovoProduto.preco}
-                          onChange={(e) => setFormNovoProduto(prev => ({...prev, preco: e.target.value}))}
+                          onChange={handlePrecoNovoProdutoChange}
                           placeholder="0,00"
                         />
                       </div>
@@ -341,11 +558,12 @@ const Estoque = () => {
                         <div className="space-y-2">
                           <Label>Preço Promocional</Label>
                           <Input
+                            key="preco-promocional-empty"
                             type="number"
                             step="0.01"
                             placeholder="0,00"
                             value={formNovoProduto.precoPromocional}
-                            onChange={(e) => setFormNovoProduto(prev => ({...prev, precoPromocional: e.target.value}))}
+                            onChange={handlePrecoPromocionalChange}
                           />
                         </div>
                       )}
@@ -354,33 +572,36 @@ const Estoque = () => {
                     {/* Checkbox Promoção */}
                     <div className="flex items-center space-x-2">
                       <Checkbox 
-                        id="promocao"
+                        key="promocao-empty"
+                        id="promocao-empty"
                         checked={formNovoProduto.emPromocao}
-                        onCheckedChange={(checked) => setFormNovoProduto(prev => ({...prev, emPromocao: !!checked}))}
+                        onCheckedChange={handlePromocaoChange}
                       />
-                      <Label htmlFor="promocao">Produto em promoção</Label>
+                      <Label htmlFor="promocao-empty">Produto em promoção</Label>
                     </div>
 
                     {/* Quantidade e Estoque Mínimo */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="quantidade">Quantidade Inicial *</Label>
+                        <Label htmlFor="quantidade-empty">Quantidade Inicial *</Label>
                         <Input 
-                          id="quantidade" 
+                          key="quantidade-empty"
+                          id="quantidade-empty" 
                           type="number" 
                           value={formNovoProduto.quantidade}
-                          onChange={(e) => setFormNovoProduto(prev => ({...prev, quantidade: e.target.value}))}
+                          onChange={handleQuantidadeChange}
                           placeholder="0"
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="estoqueMinimo">Estoque Mínimo *</Label>
+                        <Label htmlFor="estoqueMinimo-empty">Estoque Mínimo *</Label>
                         <Input 
-                          id="estoqueMinimo" 
+                          key="estoqueMinimo-empty"
+                          id="estoqueMinimo-empty" 
                           type="number" 
                           value={formNovoProduto.estoqueMinimo}
-                          onChange={(e) => setFormNovoProduto(prev => ({...prev, estoqueMinimo: e.target.value}))}
+                          onChange={handleEstoqueMinimoChange}
                           placeholder="5"
                         />
                       </div>
@@ -489,7 +710,144 @@ const Estoque = () => {
                   <span className="sm:inline">Novo Produto</span>
                 </Button>
               </DialogTrigger>
-              {/* Modal content similar to empty state above */}
+              <DialogContent className="w-[95vw] max-w-2xl mx-auto max-h-[90vh] overflow-hidden">
+                <DialogHeader>
+                  <DialogTitle>Adicionar Novo Produto</DialogTitle>
+                  <DialogDescription>
+                    Cadastre um novo produto no estoque com todas as informações necessárias
+                  </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-[60vh] px-1">
+                  <div className="space-y-4 py-4">
+                    {/* Nome */}
+                    <div className="space-y-2">
+                      <Label htmlFor="nome-main">Nome do Produto *</Label>
+                      <Input 
+                        key="nome-main"
+                        id="nome-main" 
+                        value={formNovoProduto.nome}
+                        onChange={handleNomeNovoProdutoChange}
+                        placeholder="Ex: Camiseta Infantil Unicórnio"
+                      />
+                    </div>
+
+                    {/* Categoria */}
+                    <div className="space-y-2">
+                      <Label>Categoria *</Label>
+                      <Select 
+                        key="categoria-main"
+                        value={formNovoProduto.categoria} 
+                        onValueChange={handleCategoriaNovoProdutoChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categorias.map((categoria, index) => (
+                            <SelectItem key={`categoria-main-${index}-${categoria}`} value={categoria}>
+                              {categoria}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        key="nova-categoria-main"
+                        placeholder="Ou criar nova categoria"
+                        value={formNovoProduto.novaCategoria}
+                        onChange={handleNovaCategoriaChange}
+                      />
+                    </div>
+
+                    {/* Preços */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="preco-main">Preço *</Label>
+                        <Input 
+                          key="preco-main"
+                          id="preco-main" 
+                          type="number" 
+                          step="0.01" 
+                          value={formNovoProduto.preco}
+                          onChange={handlePrecoNovoProdutoChange}
+                          placeholder="0,00"
+                        />
+                      </div>
+
+                      {formNovoProduto.emPromocao && (
+                        <div className="space-y-2">
+                          <Label>Preço Promocional</Label>
+                          <Input
+                            key="preco-promocional-main"
+                            type="number"
+                            step="0.01"
+                            placeholder="0,00"
+                            value={formNovoProduto.precoPromocional}
+                            onChange={handlePrecoPromocionalChange}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Checkbox Promoção */}
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        key="promocao-main"
+                        id="promocao-main"
+                        checked={formNovoProduto.emPromocao}
+                        onCheckedChange={handlePromocaoChange}
+                      />
+                      <Label htmlFor="promocao-main">Produto em promoção</Label>
+                    </div>
+
+                    {/* Quantidade e Estoque Mínimo */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="quantidade-main">Quantidade Inicial *</Label>
+                        <Input 
+                          key="quantidade-main"
+                          id="quantidade-main" 
+                          type="number" 
+                          value={formNovoProduto.quantidade}
+                          onChange={handleQuantidadeChange}
+                          placeholder="0"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="estoqueMinimo-main">Estoque Mínimo *</Label>
+                        <Input 
+                          key="estoqueMinimo-main"
+                          id="estoqueMinimo-main" 
+                          type="number" 
+                          value={formNovoProduto.estoqueMinimo}
+                          onChange={handleEstoqueMinimoChange}
+                          placeholder="5"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </ScrollArea>
+                <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setModalNovoProduto(false);
+                      limparFormNovoProduto();
+                    }}
+                    disabled={isLoading}
+                    className="order-2 sm:order-1"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={handleAdicionarProduto} 
+                    className="bentin-button-primary order-1 sm:order-2"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Salvando...' : 'Salvar Produto'}
+                  </Button>
+                </div>
+              </DialogContent>
             </Dialog>
           </div>
         </CardHeader>
@@ -532,7 +890,7 @@ const Estoque = () => {
                   <SelectItem key="status-todos" value="todos">Todos</SelectItem>
                   <SelectItem key="status-normal" value="normal">Normal</SelectItem>
                   <SelectItem key="status-baixo" value="baixo">Baixo</SelectItem>
-                  <SelectItem key="status-critico" value="crítico">Crítico</SelectItem>
+                  <SelectItem key="status-crítico" value="crítico">Crítico</SelectItem>
                   <SelectItem key="status-esgotado" value="esgotado">Esgotado</SelectItem>
                 </SelectContent>
               </Select>
@@ -550,13 +908,13 @@ const Estoque = () => {
                     <TableHead>Preço</TableHead>
                     <TableHead>Estoque</TableHead>
                     <TableHead className="hidden md:table-cell">Status</TableHead>
-                    <TableHead className="text-center w-[100px]">Ações</TableHead>
+                    <TableHead className="text-center w-[120px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {produtosFiltrados.length > 0 ? (
                     produtosFiltrados.map((produto) => {
-                      const status = getStatusEstoque(produto.quantidade, produto.estoqueMinimo);
+                      const status = getStatusEstoque(produto.quantidade, produto.estoqueMinimo || produto.minimo);
                       const precoExibicao = getPrecoExibicao(produto);
                       
                       return (
@@ -565,7 +923,7 @@ const Estoque = () => {
                             <div className="space-y-1">
                               <p className="font-medium leading-tight">{produto.nome}</p>
                               <div className="flex flex-wrap gap-1">
-                                {produto.emPromocao && (
+                                {(produto as any).emPromocao && (
                                   <Badge variant="secondary" className="text-xs bg-bentin-pink/10 text-bentin-pink">
                                     PROMOÇÃO
                                   </Badge>
@@ -584,7 +942,7 @@ const Estoque = () => {
                           <TableCell>
                             <div>
                               <p className="font-medium text-sm">R$ {precoExibicao.toFixed(2)}</p>
-                              {produto.emPromocao && produto.precoPromocional && (
+                              {(produto as any).emPromocao && (produto as any).precoPromocional && (
                                 <p className="text-xs text-muted-foreground line-through">
                                   R$ {produto.preco.toFixed(2)}
                                 </p>
@@ -594,11 +952,11 @@ const Estoque = () => {
                           
                           <TableCell>
                             <div>
-                              <p className={`text-sm font-medium ${produto.quantidade <= produto.estoqueMinimo ? 'text-orange-600' : ''}`}>
+                              <p className={`text-sm font-medium ${produto.quantidade <= (produto.estoqueMinimo || produto.minimo) ? 'text-orange-600' : ''}`}>
                                 {produto.quantidade}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                Min: {produto.estoqueMinimo}
+                                Min: {produto.estoqueMinimo || produto.minimo}
                               </p>
                               <div className="md:hidden mt-1">
                                 <Badge variant={status.variant} className={`${status.classe} text-xs`}>
@@ -621,10 +979,9 @@ const Estoque = () => {
                                 variant="ghost" 
                                 size="sm"
                                 onClick={() => abrirModalEdicao(produto)}
-                                className="p-2 h-8 w-8"
-                                aria-label="Editar produto"
+                                className="h-8 w-8 p-0"
                               >
-                                <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <Edit className="h-4 w-4" />
                               </Button>
                               
                               {/* Botão Adicionar Estoque */}
@@ -635,13 +992,12 @@ const Estoque = () => {
                                   setProdutoSelecionado(produto);
                                   setModalAdicionarEstoque(true);
                                 }}
-                                className="p-2 h-8 w-8 text-bentin-green hover:bg-bentin-green/10"
-                                aria-label="Adicionar estoque"
+                                className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
                               >
-                                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <Plus className="h-4 w-4" />
                               </Button>
                               
-                              {/* Botão Registrar Perda */}
+                              {/* Botão Remover Estoque */}
                               <Button 
                                 variant="ghost" 
                                 size="sm"
@@ -649,11 +1005,40 @@ const Estoque = () => {
                                   setProdutoSelecionado(produto);
                                   setModalRegistrarPerda(true);
                                 }}
-                                className="p-2 h-8 w-8 text-orange-600 hover:bg-orange-100"
-                                aria-label="Registrar perda"
+                                className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
                               >
-                                <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <Minus className="h-4 w-4" />
                               </Button>
+                              
+                              {/* Botão Remover Produto */}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Confirmar remoção</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Tem certeza que deseja remover o produto "{produto.nome}"? Esta ação não pode ser desfeita.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => handleRemoverProduto(produto)}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      Remover
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -661,15 +1046,9 @@ const Estoque = () => {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        <div className="flex flex-col items-center gap-2">
-                          <Search className="h-8 w-8 text-muted-foreground/50" />
-                          <p className="text-sm text-muted-foreground">
-                            {filtro || categoriaFiltro !== 'todos' || statusFiltro !== 'todos' 
-                              ? 'Nenhum produto encontrado com os filtros aplicados' 
-                              : 'Nenhum produto cadastrado'}
-                          </p>
-                        </div>
+                      <TableCell colSpan={6} className="text-center py-6">
+                        <Package className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm text-gray-500">Nenhum produto encontrado</p>
                       </TableCell>
                     </TableRow>
                   )}
@@ -679,122 +1058,219 @@ const Estoque = () => {
           </div>
         </CardContent>
       </Card>
-      
-      {/* Modais simplificados para ações rápidas */}
-      {/* Modal Adicionar Estoque */}
-      <Dialog open={modalAdicionarEstoque} onOpenChange={setModalAdicionarEstoque}>
-        <DialogContent className="w-[95vw] max-w-md mx-auto">
+
+      {/* Modal de Editar Produto */}
+      <Dialog open={modalEditarProduto} onOpenChange={setModalEditarProduto}>
+        <DialogContent className="w-[95vw] max-w-2xl mx-auto max-h-[90vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Adicionar Estoque</DialogTitle>
+            <DialogTitle>Editar Produto</DialogTitle>
             <DialogDescription>
-              Produto: <span className="font-medium">{produtoSelecionado?.nome}</span>
-              <br />
-              Estoque atual: <span className="font-medium">{produtoSelecionado?.quantidade} unidades</span>
+              Atualize as informações do produto
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="quantidadeAdd">Quantidade a adicionar</Label>
-              <Input 
-                id="quantidadeAdd" 
-                type="number"
-                min="1"
-                value={quantidadeAdicionar}
-                onChange={(e) => setQuantidadeAdicionar(e.target.value)}
-                placeholder="0"
-                className="mt-1"
-              />
+          <ScrollArea className="max-h-[60vh] px-1">
+            <div className="space-y-4 py-4">
+              {/* Nome */}
+              <div className="space-y-2">
+                <Label htmlFor="nome-edit">Nome do Produto *</Label>
+                <Input 
+                  key="nome-edit"
+                  id="nome-edit" 
+                  value={formEditarProduto.nome}
+                  onChange={(e) => setFormEditarProduto(prev => ({...prev, nome: e.target.value}))}
+                  placeholder="Ex: Camiseta Infantil Unicórnio"
+                />
+              </div>
+
+              {/* Categoria */}
+              <div className="space-y-2">
+                <Label>Categoria *</Label>
+                <Select 
+                  key="categoria-edit"
+                  value={formEditarProduto.categoria} 
+                  onValueChange={(value) => setFormEditarProduto(prev => ({...prev, categoria: value, novaCategoria: ''}))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categorias.map((categoria, index) => (
+                      <SelectItem key={`categoria-edit-${index}-${categoria}`} value={categoria}>
+                        {categoria}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  key="nova-categoria-edit"
+                  placeholder="Ou criar nova categoria"
+                  value={formEditarProduto.novaCategoria}
+                  onChange={(e) => setFormEditarProduto(prev => ({...prev, novaCategoria: e.target.value, categoria: ''}))}
+                />
+              </div>
+
+              {/* Preços */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="preco-edit">Preço *</Label>
+                  <Input 
+                    key="preco-edit"
+                    id="preco-edit" 
+                    type="number" 
+                    step="0.01" 
+                    value={formEditarProduto.preco}
+                    onChange={(e) => setFormEditarProduto(prev => ({...prev, preco: e.target.value}))}
+                    placeholder="0,00"
+                  />
+                </div>
+
+                {formEditarProduto.emPromocao && (
+                  <div className="space-y-2">
+                    <Label>Preço Promocional</Label>
+                    <Input
+                      key="preco-promocional-edit"
+                      type="number"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={formEditarProduto.precoPromocional}
+                      onChange={(e) => setFormEditarProduto(prev => ({...prev, precoPromocional: e.target.value}))}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Checkbox Promoção */}
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  key="promocao-edit"
+                  id="promocao-edit"
+                  checked={formEditarProduto.emPromocao}
+                  onCheckedChange={(checked) => setFormEditarProduto(prev => ({...prev, emPromocao: !!checked}))}
+                />
+                <Label htmlFor="promocao-edit">Produto em promoção</Label>
+              </div>
+
+              {/* Estoque Mínimo */}
+              <div className="space-y-2">
+                <Label htmlFor="estoqueMinimo-edit">Estoque Mínimo *</Label>
+                <Input 
+                  key="estoqueMinimo-edit"
+                  id="estoqueMinimo-edit" 
+                  type="number" 
+                  value={formEditarProduto.estoqueMinimo}
+                  onChange={(e) => setFormEditarProduto(prev => ({...prev, estoqueMinimo: e.target.value}))}
+                  placeholder="5"
+                />
+              </div>
             </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => {
-              setModalAdicionarEstoque(false);
-              setQuantidadeAdicionar('');
-              setProdutoSelecionado(null);
-            }}>
+          </ScrollArea>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setModalEditarProduto(false);
+                setProdutoSelecionado(null);
+              }}
+              disabled={isLoading}
+              className="order-2 sm:order-1"
+            >
               Cancelar
             </Button>
             <Button 
-              onClick={() => {
-                if (produtoSelecionado && quantidadeAdicionar) {
-                  adicionarEstoque(produtoSelecionado.id, parseInt(quantidadeAdicionar));
-                  setQuantidadeAdicionar('');
-                  setModalAdicionarEstoque(false);
-                  setProdutoSelecionado(null);
-                }
-              }}
-              className="bentin-button-primary"
+              onClick={handleEditarProduto} 
+              className="bentin-button-primary order-1 sm:order-2"
+              disabled={isLoading}
             >
-              Adicionar
+              {isLoading ? 'Salvando...' : 'Salvar Alterações'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Modal Registrar Perda */}
+      {/* Modal de Adicionar Estoque */}
+      <Dialog open={modalAdicionarEstoque} onOpenChange={setModalAdicionarEstoque}>
+        <DialogContent className="w-[95vw] max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle>Adicionar ao Estoque</DialogTitle>
+            <DialogDescription>
+              Adicionar unidades ao produto: {produtoSelecionado?.nome}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="quantidade-adicionar">Quantidade a adicionar</Label>
+              <Input
+                key="quantidade-adicionar"
+                id="quantidade-adicionar"
+                type="number"
+                placeholder="0"
+                value={quantidadeAdicionar}
+                onChange={(e) => setQuantidadeAdicionar(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleAdicionarEstoque} className="flex-1" disabled={isLoading}>
+                {isLoading ? 'Adicionando...' : 'Adicionar'}
+              </Button>
+              <Button variant="outline" onClick={() => {
+                setModalAdicionarEstoque(false);
+                setQuantidadeAdicionar('');
+                setProdutoSelecionado(null);
+              }}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Registrar Perda */}
       <Dialog open={modalRegistrarPerda} onOpenChange={setModalRegistrarPerda}>
         <DialogContent className="w-[95vw] max-w-md mx-auto">
           <DialogHeader>
             <DialogTitle>Registrar Perda</DialogTitle>
             <DialogDescription>
-              Produto: <span className="font-medium">{produtoSelecionado?.nome}</span>
-              <br />
-              Estoque atual: <span className="font-medium">{produtoSelecionado?.quantidade} unidades</span>
+              Registrar perda para: {produtoSelecionado?.nome}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="quantidadePerda">Quantidade perdida</Label>
-              <Input 
-                id="quantidadePerda" 
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="quantidade-perda">Quantidade perdida</Label>
+              <Input
+                key="quantidade-perda"
+                id="quantidade-perda"
                 type="number"
-                min="1"
-                max={produtoSelecionado?.quantidade || 0}
+                placeholder="0"
                 value={quantidadePerda}
                 onChange={(e) => setQuantidadePerda(e.target.value)}
-                placeholder="0"
-                className="mt-1"
               />
+              <p className="text-xs text-muted-foreground">
+                Estoque atual: {produtoSelecionado?.quantidade} unidades
+              </p>
             </div>
-            <div>
-              <Label htmlFor="motivoPerda">Motivo da perda</Label>
+            <div className="space-y-2">
+              <Label htmlFor="motivo-perda">Motivo da perda</Label>
               <Textarea
-                id="motivoPerda"
+                key="motivo-perda"
+                id="motivo-perda"
+                placeholder="Ex: Produto danificado, vencido, etc."
                 value={motivoPerda}
                 onChange={(e) => setMotivoPerda(e.target.value)}
-                placeholder="Ex: Produto danificado, vencido, etc."
-                className="mt-1 min-h-[80px]"
               />
             </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => {
-              setModalRegistrarPerda(false);
-              setQuantidadePerda('');
-              setMotivoPerda('');
-              setProdutoSelecionado(null);
-            }}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={() => {
-                if (produtoSelecionado && quantidadePerda && motivoPerda) {
-                  const quantidade = parseInt(quantidadePerda);
-                  if (quantidade <= produtoSelecionado.quantidade) {
-                    registrarPerda(produtoSelecionado.id, quantidade, motivoPerda);
-                    setQuantidadePerda('');
-                    setMotivoPerda('');
-                    setModalRegistrarPerda(false);
-                    setProdutoSelecionado(null);
-                  } else {
-                    alert('Quantidade de perda não pode ser maior que o estoque atual!');
-                  }
-                }
-              }}
-              variant="destructive"
-            >
-              Registrar Perda
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleRegistrarPerda} className="flex-1" disabled={isLoading}>
+                {isLoading ? 'Registrando...' : 'Registrar Perda'}
+              </Button>
+              <Button variant="outline" onClick={() => {
+                setModalRegistrarPerda(false);
+                setQuantidadePerda('');
+                setMotivoPerda('');
+                setProdutoSelecionado(null);
+              }}>
+                Cancelar
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
