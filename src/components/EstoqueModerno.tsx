@@ -124,7 +124,6 @@ const EstoqueModerno = () => {
         dataAtualizacao: new Date().toISOString()
       };
 
-      await supabaseService.atualizarProduto(produtoCompleto);
       await actions.atualizarProduto(produtoCompleto);
       
       setModalVisualizarProduto(false);
