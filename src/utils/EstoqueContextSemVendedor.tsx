@@ -251,6 +251,8 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
       console.error('❌ Erro ao atualizar produto:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar produto' });
       demoLogger.error('Erro ao atualizar produto', error);
+      // Re-throw para que o componente possa tratar o erro também
+      throw error;
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }

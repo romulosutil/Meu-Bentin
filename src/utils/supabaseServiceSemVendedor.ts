@@ -8,7 +8,7 @@ import { SUPABASE_CONFIG, validateSupabaseConfig, logConfigStatus } from './envC
 import { getSupabaseClient } from './supabaseClient';
 import { logTableNotFound, logDemoOperation, conditionalLog } from './demoModeLogger';
 
-// Tipos de banco de dados (sem vendedor)
+// Tipos de banco de dados (sem vendedor) - Apenas colunas existentes na tabela atual
 export interface DbProduto {
   id: string;
   nome: string;
@@ -25,13 +25,14 @@ export interface DbProduto {
   codigo_barras?: string;
   descricao?: string;
   ativo: boolean;
-  image_url?: string;
-  tamanhos?: string[];
-  genero?: string;
-  cores?: string[];
-  tipo_tecido?: string;
   created_at: string;
   updated_at: string;
+  // Colunas futuras comentadas até a migração ser aplicada:
+  // image_url?: string;
+  // tamanhos?: string[];
+  // genero?: string;
+  // cores?: string[];
+  // tipo_tecido?: string;
 }
 
 export interface DbVenda {
@@ -163,6 +164,7 @@ class SupabaseService {
 
   async addProduto(produto: Omit<Produto, 'id' | 'dataAtualizacao'>): Promise<Produto> {
     try {
+      // Usar apenas colunas que existem na tabela atual
       const dbProduto: Omit<DbProduto, 'id' | 'created_at' | 'updated_at'> = {
         nome: produto.nome,
         categoria: produto.categoria,
@@ -176,12 +178,8 @@ class SupabaseService {
         fornecedor: produto.fornecedor,
         codigo_barras: produto.codigoBarras,
         descricao: produto.descricao,
-        ativo: produto.ativo,
-        image_url: produto.imageUrl,
-        tamanhos: produto.tamanhos,
-        genero: produto.genero,
-        cores: produto.cores,
-        tipo_tecido: produto.tipoTecido
+        ativo: produto.ativo
+        // Removidas colunas que não existem ainda: image_url, tamanhos, genero, cores, tipo_tecido
       };
 
       const { data, error } = await this.client
@@ -204,6 +202,7 @@ class SupabaseService {
 
   async updateProduto(produto: Produto): Promise<Produto> {
     try {
+      // Usar apenas colunas que existem na tabela atual
       const dbProduto: Partial<DbProduto> = {
         nome: produto.nome,
         categoria: produto.categoria,
@@ -217,12 +216,8 @@ class SupabaseService {
         fornecedor: produto.fornecedor,
         codigo_barras: produto.codigoBarras,
         descricao: produto.descricao,
-        ativo: produto.ativo,
-        image_url: produto.imageUrl,
-        tamanhos: produto.tamanhos,
-        genero: produto.genero,
-        cores: produto.cores,
-        tipo_tecido: produto.tipoTecido
+        ativo: produto.ativo
+        // Removidas colunas que não existem ainda: image_url, tamanhos, genero, cores, tipo_tecido
       };
 
       const { data, error } = await this.client
@@ -590,22 +585,23 @@ class SupabaseService {
       nome: dbProduto.nome,
       categoria: dbProduto.categoria || 'Sem categoria',
       preco: dbProduto.preco,
-      precoCusto: dbProduto.preco_custo,
+      precoCusto: dbProduto.preco_custo || 0,
       quantidade: dbProduto.quantidade_estoque,
-      estoqueMinimo: dbProduto.estoque_minimo,
-      tamanho: dbProduto.tamanho,
-      cor: dbProduto.cor,
-      marca: dbProduto.marca,
-      fornecedor: dbProduto.fornecedor,
-      codigoBarras: dbProduto.codigo_barras,
-      descricao: dbProduto.descricao,
+      estoqueMinimo: dbProduto.estoque_minimo || 0,
+      tamanho: dbProduto.tamanho || '',
+      cor: dbProduto.cor || '',
+      marca: dbProduto.marca || '',
+      fornecedor: dbProduto.fornecedor || '',
+      codigoBarras: dbProduto.codigo_barras || '',
+      descricao: dbProduto.descricao || '',
       dataAtualizacao: dbProduto.updated_at,
-      ativo: dbProduto.ativo,
-      imageUrl: dbProduto.image_url,
-      tamanhos: dbProduto.tamanhos,
-      genero: dbProduto.genero,
-      cores: dbProduto.cores,
-      tipoTecido: dbProduto.tipo_tecido
+      ativo: dbProduto.ativo ?? true,
+      // Valores padrão para colunas que não existem ainda
+      imageUrl: '',
+      tamanhos: [],
+      genero: 'unissex',
+      cores: [],
+      tipoTecido: ''
     };
   }
 
