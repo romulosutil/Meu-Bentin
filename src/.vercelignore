@@ -1,76 +1,55 @@
-# Arquivos de documentação desnecessários para o build
+# Documentação e arquivos de desenvolvimento
 *.md
-README.md
-DEPLOY_*.md
-CLEANUP_*.md
+*.txt
+.gitignore
 CHECKLIST_*.md
-STATUS_*.md
-PROJETO_*.md
-LIMPEZA_*.md
+CLEANUP_*.md
+CONFIGURAÇÃO_*.md
+CONFIRMAÇÃO_*.md
+CORREÇÃO_*.md
+CORREÇÕES_*.md
+DEPLOY_*.md
+ERRO_*.md
 ESTRUTURA_*.md
-FRAMEWORK_*.md
-GITHUB_*.md
+EXECUTAR_*.sql
 FINAL_*.md
-Attributions.md
-temp_*.md
-
-# Pastas de documentação
-guidelines/
-docs/
-
-# CRÍTICO: Pasta supabase contém código Deno com dependências JSR inválidas para npm
-# DEVE ser ignorada para evitar EINVALIDPACKAGENAME na Vercel
-supabase/
-supabase/**/*
-utils/supabase/
-utils/supabase/**/*
-
-# Arquivos Deno específicos que causam conflito com npm
-*.deno.ts
-deno.json
-deno.lock
+FRAMEWORK_*.md
+FUNCIONALIDADES_*.md
+GITHUB_*.md
+GUIA_*.md
+LIMPEZA_*.md
+MIGRAÇÃO_*.md
+PROJECT_*.md
+PROJETO_*.md
+REFATORACAO_*.md
+RELATORIO_*.md
+SISTEMA_*.md
+STATUS_*.md
+TEMP_*.md
 
 # Arquivos temporários
 temp_*
-*.tmp
-*.temp
+*_backup*
+*_old*
+*_REMOVIDO*
+REMOVIDO*
+*.bkp
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Pastas não essenciais para o build
+guidelines/
+supabase/functions/
+supabase/migrations/
+imports/
 
-# Cache directories
-.cache/
-.parcel-cache/
-
-# Editor directories and files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Backup files
-*.bak
-*.backup
-
-# Test files não relacionados ao build
-*.test.ts
-*.test.tsx
-*.spec.ts
-*.spec.tsx
-
-# Arquivos de configuração desnecessários para o deploy
-.gitignore.bak
+# Arquivos de configuração específicos
+.npmrc
 .env.example
-.env.local.example
+tailwind.config.js
+tsconfig.node.json
+
+# Arquivos Python temporários
+*.py
+
+# Cache e logs
+.cache/
+*.log

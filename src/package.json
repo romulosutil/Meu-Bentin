@@ -1,6 +1,6 @@
 {
   "name": "meu-bentin-gestao",
-  "version": "1.0.0", 
+  "version": "1.0.0",
   "description": "Sistema de gestão completo para loja infantil Meu Bentin",
   "type": "module",
   "private": true,
@@ -48,7 +48,7 @@
   },
   "keywords": [
     "react",
-    "typescript", 
+    "typescript",
     "tailwindcss",
     "gestao-loja",
     "estoque",
