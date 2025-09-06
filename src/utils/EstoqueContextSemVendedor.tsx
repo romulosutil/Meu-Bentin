@@ -477,7 +477,7 @@ export function useEstoque() {
     error: state.error,
 
     // Ações
-    ...actions,
+    actions,
   };
 }
 
