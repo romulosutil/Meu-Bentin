@@ -1,9 +1,0 @@
-engine-strict=true
-legacy-peer-deps=false
-fund=false
-audit=false
-save-exact=false
-package-lock=true
-registry=https://registry.npmjs.org/
-cache=.npm
-prefer-online=true

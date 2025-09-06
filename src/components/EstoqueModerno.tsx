@@ -16,6 +16,7 @@ import { LoadingState } from './ui/loading-state';
 import { Plus, Search, Edit, Package, AlertTriangle, DollarSign, Trash2, ImageIcon, TrendingUp, Eye, X } from 'lucide-react';
 import { useToast } from './ToastProvider';
 import FormularioProduto from './FormularioProduto';
+import VisualizacaoProduto from './VisualizacaoProduto';
 import { supabaseService, Produto } from '../utils/supabaseServiceSemVendedor';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
