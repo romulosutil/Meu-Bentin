@@ -27,12 +27,12 @@ export interface DbProduto {
   ativo: boolean;
   created_at: string;
   updated_at: string;
-  // Colunas futuras comentadas até a migração ser aplicada:
-  // image_url?: string;
-  // tamanhos?: string[];
-  // genero?: string;
-  // cores?: string[];
-  // tipo_tecido?: string;
+  // Colunas extras adicionadas:
+  image_url?: string;
+  tamanhos?: string[];
+  genero?: string;
+  cores?: string[];
+  tipo_tecido?: string;
 }
 
 export interface DbVenda {
@@ -164,7 +164,7 @@ class SupabaseService {
 
   async addProduto(produto: Omit<Produto, 'id' | 'dataAtualizacao'>): Promise<Produto> {
     try {
-      // Usar apenas colunas que existem na tabela atual
+      // Incluir todas as colunas, incluindo as extras
       const dbProduto: Omit<DbProduto, 'id' | 'created_at' | 'updated_at'> = {
         nome: produto.nome,
         categoria: produto.categoria,
@@ -178,8 +178,13 @@ class SupabaseService {
         fornecedor: produto.fornecedor,
         codigo_barras: produto.codigoBarras,
         descricao: produto.descricao,
-        ativo: produto.ativo
-        // Removidas colunas que não existem ainda: image_url, tamanhos, genero, cores, tipo_tecido
+        ativo: produto.ativo,
+        // Campos extras agora incluídos:
+        image_url: produto.imageUrl,
+        tamanhos: produto.tamanhos,
+        genero: produto.genero,
+        cores: produto.cores,
+        tipo_tecido: produto.tipoTecido
       };
 
       const { data, error } = await this.client
@@ -202,7 +207,7 @@ class SupabaseService {
 
   async updateProduto(produto: Produto): Promise<Produto> {
     try {
-      // Usar apenas colunas que existem na tabela atual
+      // Incluir todas as colunas, incluindo as extras
       const dbProduto: Partial<DbProduto> = {
         nome: produto.nome,
         categoria: produto.categoria,
@@ -216,8 +221,13 @@ class SupabaseService {
         fornecedor: produto.fornecedor,
         codigo_barras: produto.codigoBarras,
         descricao: produto.descricao,
-        ativo: produto.ativo
-        // Removidas colunas que não existem ainda: image_url, tamanhos, genero, cores, tipo_tecido
+        ativo: produto.ativo,
+        // Campos extras agora incluídos:
+        image_url: produto.imageUrl,
+        tamanhos: produto.tamanhos,
+        genero: produto.genero,
+        cores: produto.cores,
+        tipo_tecido: produto.tipoTecido
       };
 
       const { data, error } = await this.client
@@ -596,12 +606,12 @@ class SupabaseService {
       descricao: dbProduto.descricao || '',
       dataAtualizacao: dbProduto.updated_at,
       ativo: dbProduto.ativo ?? true,
-      // Valores padrão para colunas que não existem ainda
-      imageUrl: '',
-      tamanhos: [],
-      genero: 'unissex',
-      cores: [],
-      tipoTecido: ''
+      // Campos extras agora mapeados corretamente
+      imageUrl: dbProduto.image_url || '',
+      tamanhos: dbProduto.tamanhos || [],
+      genero: dbProduto.genero || 'unissex',
+      cores: dbProduto.cores || [],
+      tipoTecido: dbProduto.tipo_tecido || ''
     };
   }
 
