@@ -1,6 +1,6 @@
 import { useState, useCallback, Suspense, lazy, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { EstoqueProvider } from './utils/EstoqueContextSupabase';
+import { EstoqueProvider } from './utils/EstoqueContextSemVendedor';
 import { ToastProvider } from './components/ToastProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useAuth } from './hooks/useAuth';
@@ -11,8 +11,8 @@ import { ShoppingBag, Package, DollarSign, TrendingUp, BarChart3, Loader2 } from
 import { initializeClipboard } from './utils/clipboard';
 
 // Lazy loading para componentes pesados
-const Estoque = lazy(() => import('./components/Estoque'));
-const Vendas = lazy(() => import('./components/Vendas'));
+const Estoque = lazy(() => import('./components/EstoqueModerno'));
+const Vendas = lazy(() => import('./components/VendasSemVendedor'));
 const Receita = lazy(() => import('./components/Receita'));
 const AnaliseData = lazy(() => import('./components/AnaliseData'));
 
@@ -114,102 +114,100 @@ export default function App() {
     <ErrorBoundary>
       <ToastProvider>
         <EstoqueProvider>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
-        {/* Container principal otimizado para mobile */}
-        <div className="w-full max-w-7xl mx-auto p-3 sm:p-4 lg:p-6">
-          
-          {/* Header com autenticação */}
-          <header className="mb-6 sm:mb-8">
-            <div className="mb-4 sm:mb-6">
-              <AuthenticatedHeader />
-            </div>
-            
-            {/* Subtítulo otimizado */}
-            <div className="inline-block">
-              <p className="text-sm sm:text-base text-muted-foreground bg-white/70 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 border border-border/30">
-                Sistema completo de gerenciamento para loja infantil
-              </p>
-            </div>
-          </header>
+          <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+            {/* Container principal com design desktop-first - largura expandida */}
+            <div className="container mx-auto max-w-full px-6 py-8 lg:px-8 xl:px-12">
+              
+              {/* Header com autenticação */}
+              <header className="mb-8">
+                <div className="mb-6">
+                  <AuthenticatedHeader />
+                </div>
+                
+                {/* Subtítulo profissional */}
+                <div className="max-w-2xl">
+                  <p className="text-muted-foreground bg-white/80 backdrop-blur-sm rounded-xl px-4 py-3 border border-border/40 shadow-sm">
+                    Sistema completo de gerenciamento para loja infantil
+                  </p>
+                </div>
+              </header>
 
-          {/* Navegação por abas otimizada */}
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 sm:space-y-6">
-            
-            {/* TabsList responsivo */}
-            <TabsList className="w-full bg-white rounded-2xl p-2 sm:p-3 shadow-sm border border-border/50 h-auto">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1 sm:gap-2 w-full">
+              {/* Navegação por abas com design desktop-first */}
+              <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-8">
+                
+                {/* TabsList com largura otimizada */}
+                <TabsList className="inline-flex bg-white rounded-2xl p-2 shadow-lg border border-border/50 h-auto">
+                  <div className="flex gap-2">
+                    {TABS_CONFIG.map((tab) => {
+                      const IconComponent = tab.icon;
+                      return (
+                        <TabsTrigger 
+                          key={tab.value}
+                          value={tab.value} 
+                          className={`
+                            bentin-tab-trigger 
+                            flex items-center gap-3
+                            rounded-xl 
+                            px-6 py-4
+                            h-auto 
+                            min-h-[60px] min-w-[120px]
+                            text-sm font-medium
+                            ${tab.activeColor}
+                            data-[state=active]:text-white 
+                            transition-all duration-200 
+                            data-[state=active]:shadow-lg 
+                            group
+                            hover:bg-gray-50
+                            data-[state=active]:hover:bg-transparent
+                          `}
+                          aria-label={`Navegar para ${tab.label}`}
+                        >
+                          <div className={`
+                            bentin-tab-icon 
+                            p-2 
+                            rounded-lg 
+                            bg-gradient-to-br 
+                            ${tab.iconBg}
+                            flex-shrink-0 
+                            transition-all duration-200 
+                            group-data-[state=active]:from-white/20 
+                            group-data-[state=active]:to-white/30
+                          `}>
+                            <IconComponent className={`h-5 w-5 ${tab.iconColor} transition-colors duration-200`} />
+                          </div>
+                          <span className="font-semibold">
+                            {tab.label}
+                          </span>
+                        </TabsTrigger>
+                      );
+                    })}
+                  </div>
+                </TabsList>
+
+                {/* Conteúdo das abas */}
                 {TABS_CONFIG.map((tab) => {
-                  const IconComponent = tab.icon;
+                  const Component = tab.component;
                   return (
-                    <TabsTrigger 
-                      key={tab.value}
-                      value={tab.value} 
-                      className={`
-                        bentin-tab-trigger 
-                        flex flex-col sm:flex-row 
-                        items-center justify-center 
-                        gap-1 sm:gap-2 
-                        rounded-xl 
-                        px-2 sm:px-4 
-                        py-2 sm:py-3 
-                        h-auto 
-                        min-h-[50px] sm:min-h-[60px]
-                        text-xs sm:text-sm
-                        ${tab.activeColor}
-                        data-[state=active]:text-white 
-                        transition-all duration-200 
-                        data-[state=active]:shadow-md 
-                        group
-                        ${tab.value === 'analise' ? 'col-span-2 sm:col-span-1' : ''}
-                      `}
-                      aria-label={`Navegar para ${tab.label}`}
+                    <TabsContent 
+                      key={tab.value} 
+                      value={tab.value}
+                      className="mt-8 focus:outline-none"
+                      tabIndex={-1}
                     >
-                      <div className={`
-                        bentin-tab-icon 
-                        p-1.5 sm:p-2 
-                        rounded-lg 
-                        bg-gradient-to-br 
-                        ${tab.iconBg}
-                        flex-shrink-0 
-                        transition-all duration-200 
-                        group-data-[state=active]:from-white/20 
-                        group-data-[state=active]:to-white/30
-                      `}>
-                        <IconComponent className={`h-4 w-4 sm:h-5 sm:w-5 ${tab.iconColor} transition-colors duration-200`} />
-                      </div>
-                      <span className="font-semibold whitespace-nowrap leading-tight">
-                        {tab.label}
-                      </span>
-                    </TabsTrigger>
+                      {/* Renderização condicional para performance */}
+                      {activeTab === tab.value && (
+                        <div className="animate-in fade-in duration-300">
+                          <Suspense fallback={<LoadingComponent />}>
+                            <Component />
+                          </Suspense>
+                        </div>
+                      )}
+                    </TabsContent>
                   );
                 })}
-              </div>
-            </TabsList>
-
-            {/* Conteúdo das abas com lazy loading */}
-            {TABS_CONFIG.map((tab) => {
-              const Component = tab.component;
-              return (
-                <TabsContent 
-                  key={tab.value} 
-                  value={tab.value}
-                  className="mt-4 sm:mt-6 focus:outline-none"
-                  tabIndex={-1}
-                >
-                  {/* Renderização condicional para performance */}
-                  {activeTab === tab.value && (
-                    <div className="animate-in fade-in duration-300">
-                      <Suspense fallback={<LoadingComponent />}>
-                        <Component />
-                      </Suspense>
-                    </div>
-                  )}
-                </TabsContent>
-              );
-            })}
-          </Tabs>
+              </Tabs>
+            </div>
           </div>
-        </div>
         </EstoqueProvider>
       </ToastProvider>
     </ErrorBoundary>
