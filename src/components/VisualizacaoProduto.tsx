@@ -43,7 +43,7 @@ const VisualizacaoProduto: React.FC<VisualizacaoProdutoProps> = ({ produto }) =>
     return 'text-green-600';
   };
 
-  const status = getStatusEstoque(produto.quantidade, produto.minimo);
+  const status = getStatusEstoque(produto.quantidade, produto.estoqueMinimo);
 
   return (
     <div className="space-y-6">
@@ -127,21 +127,18 @@ const VisualizacaoProduto: React.FC<VisualizacaoProdutoProps> = ({ produto }) =>
               </div>
               
               <div>
-                <p className="text-sm text-gray-500">SKU</p>
+                <p className="text-sm text-gray-500">Código de Barras</p>
                 <p className="font-mono text-sm bg-gray-100 px-2 py-1 rounded inline-block">
-                  {produto.sku || 'Não definido'}
+                  {produto.codigoBarras || 'Não definido'}
                 </p>
               </div>
 
               <div>
                 <p className="text-sm text-gray-500">Fornecedor</p>
-                <p className="font-medium">{produto.fornecedorNome || 'Não informado'}</p>
+                <p className="font-medium">{produto.fornecedor || 'Não informado'}</p>
               </div>
 
-              <div>
-                <p className="text-sm text-gray-500">Vendedor</p>
-                <p className="font-medium">{produto.vendedor}</p>
-              </div>
+
             </div>
           </div>
 
@@ -162,7 +159,7 @@ const VisualizacaoProduto: React.FC<VisualizacaoProdutoProps> = ({ produto }) =>
               <div>
                 <p className="text-sm text-gray-500">Custo</p>
                 <p className="text-lg font-semibold">
-                  R$ {produto.custo?.toFixed(2) || '0,00'}
+                  R$ {produto.precoCusto?.toFixed(2) || '0,00'}
                 </p>
               </div>
 
@@ -173,7 +170,7 @@ const VisualizacaoProduto: React.FC<VisualizacaoProdutoProps> = ({ produto }) =>
               
               <div>
                 <p className="text-sm text-gray-500">Estoque Mínimo</p>
-                <p className="text-lg font-semibold">{produto.minimo}</p>
+                <p className="text-lg font-semibold">{produto.estoqueMinimo}</p>
               </div>
             </div>
 

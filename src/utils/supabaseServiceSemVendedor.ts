@@ -133,9 +133,11 @@ export interface Meta {
 // Classe principal do serviço (sem vendedores)
 class SupabaseService {
   private client: SupabaseClient;
+  private isConfigured: boolean;
 
   constructor() {
     this.client = getSupabaseClient();
+    this.isConfigured = validateSupabaseConfig();
   }
 
   // ============= PRODUTOS =============
@@ -617,6 +619,84 @@ class SupabaseService {
     };
     
     return conversoes[dbForma] || 'outros';
+  }
+
+  // ============= UPLOAD DE IMAGENS =============
+  async uploadImage(file: File): Promise<string> {
+    try {
+      if (!this.isConfigured) {
+        throw new Error('Supabase não configurado');
+      }
+
+      // Validar arquivo
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Tipo de arquivo não suportado. Use: JPG, PNG ou WebP');
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Arquivo muito grande. Tamanho máximo: 5MB');
+      }
+
+      // Preparar FormData
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Fazer upload via API
+      const response = await fetch(`${SUPABASE_CONFIG.url}/functions/v1/make-server-f57293e2/upload-image`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro no upload');
+      }
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Erro no upload');
+      }
+
+      return result.imageUrl;
+    } catch (error) {
+      console.error('Erro no upload de imagem:', error);
+      throw error;
+    }
+  }
+
+  async deleteImage(fileName: string): Promise<void> {
+    try {
+      if (!this.isConfigured) {
+        throw new Error('Supabase não configurado');
+      }
+
+      const response = await fetch(`${SUPABASE_CONFIG.url}/functions/v1/make-server-f57293e2/delete-image/${fileName}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao deletar imagem');
+      }
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao deletar imagem');
+      }
+    } catch (error) {
+      console.error('Erro ao deletar imagem:', error);
+      throw error;
+    }
   }
 }
 

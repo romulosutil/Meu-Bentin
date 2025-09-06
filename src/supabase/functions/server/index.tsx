@@ -788,6 +788,164 @@ app.get('/make-server-f57293e2/health', async (c) => {
   }
 });
 
+// =====================================================
+// ROTAS DE UPLOAD DE IMAGENS
+// =====================================================
+
+// Inicialização do bucket de imagens
+async function initializeBucket() {
+  try {
+    const bucketName = 'make-f57293e2-produtos';
+    
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+    
+    if (!bucketExists) {
+      console.log('🪣 Criando bucket de imagens...');
+      const { error } = await supabase.storage.createBucket(bucketName, {
+        public: false,
+        allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
+        fileSizeLimit: 5242880 // 5MB
+      });
+      
+      if (error) {
+        console.error('❌ Erro ao criar bucket:', error);
+      } else {
+        console.log('✅ Bucket criado com sucesso');
+      }
+    } else {
+      console.log('✅ Bucket já existe');
+    }
+  } catch (error) {
+    console.error('❌ Erro ao inicializar bucket:', error);
+  }
+}
+
+// POST /make-server-f57293e2/upload-image - Upload de imagem
+app.post('/make-server-f57293e2/upload-image', async (c) => {
+  try {
+    console.log('🔄 Iniciando upload de imagem...');
+    
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File;
+    
+    if (!file) {
+      return c.json({ error: 'Nenhum arquivo enviado' }, 400);
+    }
+
+    // Validar tipo de arquivo
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      return c.json({ 
+        error: 'Tipo de arquivo não suportado. Use: JPG, PNG ou WebP' 
+      }, 400);
+    }
+
+    // Validar tamanho (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      return c.json({ 
+        error: 'Arquivo muito grande. Tamanho máximo: 5MB' 
+      }, 400);
+    }
+
+    // Gerar nome único para o arquivo
+    const fileExt = file.name.split('.').pop();
+    const fileName = `produto-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const bucketName = 'make-f57293e2-produtos';
+
+    console.log(`📤 Fazendo upload: ${fileName}`);
+    
+    // Converter File para ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+    const fileBuffer = new Uint8Array(arrayBuffer);
+
+    // Upload para o Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(bucketName)
+      .upload(fileName, fileBuffer, {
+        contentType: file.type,
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('❌ Erro no upload:', uploadError);
+      return c.json({ 
+        error: 'Erro no upload da imagem',
+        details: uploadError.message 
+      }, 500);
+    }
+
+    // Gerar URL assinada válida por 1 ano
+    const { data: urlData, error: urlError } = await supabase.storage
+      .from(bucketName)
+      .createSignedUrl(fileName, 31536000); // 1 ano em segundos
+
+    if (urlError) {
+      console.error('❌ Erro ao gerar URL:', urlError);
+      return c.json({ 
+        error: 'Erro ao gerar URL da imagem',
+        details: urlError.message 
+      }, 500);
+    }
+
+    console.log('✅ Upload concluído com sucesso');
+    
+    return c.json({
+      success: true,
+      imageUrl: urlData.signedUrl,
+      fileName: fileName,
+      path: uploadData.path,
+      message: 'Imagem enviada com sucesso'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro interno no upload:', error);
+    return c.json({ 
+      error: 'Erro interno do servidor',
+      details: error instanceof Error ? error.message : 'Erro desconhecido'
+    }, 500);
+  }
+});
+
+// DELETE /make-server-f57293e2/delete-image/:fileName - Deletar imagem
+app.delete('/make-server-f57293e2/delete-image/:fileName', async (c) => {
+  try {
+    const fileName = c.req.param('fileName');
+    const bucketName = 'make-f57293e2-produtos';
+
+    console.log(`🗑️ Deletando imagem: ${fileName}`);
+
+    const { error } = await supabase.storage
+      .from(bucketName)
+      .remove([fileName]);
+
+    if (error) {
+      console.error('❌ Erro ao deletar imagem:', error);
+      return c.json({ 
+        error: 'Erro ao deletar imagem',
+        details: error.message 
+      }, 500);
+    }
+
+    console.log('✅ Imagem deletada com sucesso');
+    
+    return c.json({
+      success: true,
+      message: 'Imagem deletada com sucesso'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro interno ao deletar imagem:', error);
+    return c.json({ 
+      error: 'Erro interno do servidor',
+      details: error instanceof Error ? error.message : 'Erro desconhecido'
+    }, 500);
+  }
+});
+
+// Inicializar bucket na inicialização do servidor
+await initializeBucket();
+
 // Inicializar servidor
 console.log('🚀 Iniciando servidor Meu Bentin...');
 Deno.serve(app.fetch);

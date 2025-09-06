@@ -74,9 +74,9 @@ const EstoqueModerno = () => {
         nome: produtoData.nome,
         categoria: produtoData.categoria,
         preco: produtoData.preco,
-        custo: produtoData.custo,
+        precoCusto: produtoData.precoCusto,
         quantidade: produtoData.quantidade,
-        minimo: produtoData.minimo,
+        estoqueMinimo: produtoData.estoqueMinimo,
         vendedor: produtoData.vendedor,
         ativo: produtoData.ativo,
         cor: produtoData.cores?.join(', ') || produtoData.cor,
@@ -85,7 +85,9 @@ const EstoqueModerno = () => {
         descricao: produtoData.descricao,
         emPromocao: produtoData.emPromocao,
         precoPromocional: produtoData.precoPromocional,
-        estoqueMinimo: produtoData.estoqueMinimo
+        genero: produtoData.genero,
+        codigoBarras: produtoData.codigoBarras,
+        imageUrl: produtoData.imageUrl
       });
 
       setModalNovoProduto(false);
@@ -173,7 +175,7 @@ const EstoqueModerno = () => {
     return produtos.filter(produto => {
       const matchBusca = produto.nome.toLowerCase().includes(filtros.busca.toLowerCase()) ||
         produto.categoria.toLowerCase().includes(filtros.busca.toLowerCase()) ||
-        (produto.sku && produto.sku.toLowerCase().includes(filtros.busca.toLowerCase()));
+        (produto.codigoBarras && produto.codigoBarras.toLowerCase().includes(filtros.busca.toLowerCase()));
       
       const matchCategoria = filtros.categoria === 'todos' || produto.categoria === filtros.categoria;
       const matchGenero = filtros.genero === 'todos' || produto.genero === filtros.genero;
@@ -183,9 +185,9 @@ const EstoqueModerno = () => {
         if (filtros.status === 'esgotado') {
           matchStatus = produto.quantidade === 0;
         } else if (filtros.status === 'baixo') {
-          matchStatus = produto.quantidade > 0 && produto.quantidade <= produto.minimo;
+          matchStatus = produto.quantidade > 0 && produto.quantidade <= produto.estoqueMinimo;
         } else if (filtros.status === 'normal') {
-          matchStatus = produto.quantidade > produto.minimo;
+          matchStatus = produto.quantidade > produto.estoqueMinimo;
         }
       }
       
@@ -196,12 +198,18 @@ const EstoqueModerno = () => {
   // Estatísticas
   const estatisticas = useMemo(() => {
     const totalProdutos = produtos.length;
-    const produtosBaixoEstoque = produtos.filter(p => p.quantidade <= p.minimo).length;
+    const produtosBaixoEstoque = produtos.filter(p => p.quantidade <= p.estoqueMinimo).length;
     const produtosEsgotados = produtos.filter(p => p.quantidade === 0).length;
     const valorTotalEstoque = produtos.reduce((total, p) => total + (p.preco * p.quantidade), 0);
-    const produtosComMargem = produtos.filter(p => p.margemLucro).length;
+    // Calcular margem de lucro baseada em preço e custo
+    const produtosComMargem = produtos.filter(p => p.preco > 0 && p.precoCusto > 0).length;
     const margemMedia = produtosComMargem > 0 
-      ? produtos.reduce((total, p) => total + (p.margemLucro || 0), 0) / produtosComMargem 
+      ? produtos
+          .filter(p => p.preco > 0 && p.precoCusto > 0)
+          .reduce((total, p) => {
+            const margem = ((p.preco - p.precoCusto) / p.precoCusto) * 100;
+            return total + margem;
+          }, 0) / produtosComMargem 
       : 0;
 
     return { 
@@ -259,7 +267,7 @@ const EstoqueModerno = () => {
           {produto.marca && <p className="text-sm text-muted-foreground">{produto.marca}</p>}
           {produto.sku && (
             <code className="text-xs bg-gray-100 px-2 py-1 rounded mt-1 inline-block">
-              {produto.sku}
+              {produto.codigoBarras}
             </code>
           )}
         </div>
@@ -324,7 +332,7 @@ const EstoqueModerno = () => {
       label: 'Status',
       width: 'w-24',
       render: (_: any, produto: Produto) => {
-        const status = getStatusEstoque(produto.quantidade, produto.minimo);
+        const status = getStatusEstoque(produto.quantidade, produto.estoqueMinimo);
         return <Badge className={`${status.classe} text-xs`}>{status.texto}</Badge>;
       }
     },

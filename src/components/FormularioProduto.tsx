@@ -56,10 +56,10 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
     nome: '',
     categoria: '',
     preco: 0,
-    custo: 0,
+    precoCusto: 0,
     quantidade: 0,
-    minimo: 0,
-    vendedor: 'Naila',
+    estoqueMinimo: 0,
+
     cor: '',
     tamanho: '',
     imageUrl: '',
@@ -67,9 +67,8 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
     genero: 'unissex',
     cores: [],
     tipoTecido: '',
-    sku: '',
-    fornecedorNome: '',
-    margemLucro: 0,
+    codigoBarras: '',
+    fornecedor: '',
     marca: 'Meu Bentin',
     descricao: '',
     ativo: true
@@ -85,6 +84,7 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [warnings, setWarnings] = useState<string[]>([]);
   const [novaCategoria, setNovaCategoria] = useState('');
+  const [margemLucro, setMargemLucro] = useState(0);
   
   // Estados para upload de imagem
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -102,10 +102,10 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
         nome: produto.nome,
         categoria: produto.categoria,
         preco: produto.preco,
-        custo: produto.custo,
+        precoCusto: produto.precoCusto || 0,
         quantidade: produto.quantidade,
-        minimo: produto.minimo,
-        vendedor: produto.vendedor,
+        estoqueMinimo: produto.estoqueMinimo || 0,
+
         cor: produto.cor || '',
         tamanho: produto.tamanho || '',
         imageUrl: produto.imageUrl || '',
@@ -113,9 +113,8 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
         genero: produto.genero || 'unissex',
         cores: produto.cores || [],
         tipoTecido: produto.tipoTecido || '',
-        sku: produto.sku || '',
-        fornecedorNome: produto.fornecedorNome || '',
-        margemLucro: produto.margemLucro || 0,
+        codigoBarras: produto.codigoBarras || '',
+        fornecedor: produto.fornecedor || '',
         marca: produto.marca || 'Meu Bentin',
         descricao: produto.descricao || '',
         ativo: produto.ativo
@@ -125,21 +124,24 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
 
   // Calcular margem automaticamente
   useEffect(() => {
-    if (formData.preco > 0 && formData.custo > 0) {
-      const margem = ((formData.preco - formData.custo) / formData.custo) * 100;
-      setFormData(prev => ({ ...prev, margemLucro: Math.round(margem * 100) / 100 }));
+    if (formData.preco > 0 && formData.precoCusto > 0) {
+      const margem = ((formData.preco - formData.precoCusto) / formData.precoCusto) * 100;
+      const margemCalculada = Math.round(margem * 100) / 100;
+      setMargemLucro(margemCalculada);
+    } else {
+      setMargemLucro(0);
     }
-  }, [formData.preco, formData.custo]);
+  }, [formData.preco, formData.precoCusto]);
 
   // Validação dinâmica com warnings
   useEffect(() => {
     const newWarnings: string[] = [];
     
-    if (formData.margemLucro !== undefined && formData.margemLucro < 15) {
+    if (margemLucro > 0 && margemLucro < 15) {
       newWarnings.push('Margem de lucro baixa (recomendado: acima de 15%)');
     }
     
-    if (formData.quantidade > 0 && formData.quantidade <= formData.minimo) {
+    if (formData.quantidade > 0 && formData.quantidade <= formData.estoqueMinimo) {
       newWarnings.push('Quantidade está próxima do estoque mínimo');
     }
     
@@ -174,30 +176,33 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
     try {
       // Progresso animado
       const progressAnimation = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 10, 90));
+        setUploadProgress(prev => Math.min(prev + 10, 85));
       }, 100);
 
-      // Gerar nome único para o arquivo
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      // Upload real via Supabase Storage
+      const imageUrl = await supabaseService.uploadImage(file);
       
-      // Upload de imagens temporariamente desabilitado - requer configuração do Supabase Storage
       clearInterval(progressAnimation);
       setUploadProgress(100);
       
-      // Usar URL placeholder para demonstração
-      const placeholderUrl = `https://via.placeholder.com/400x400/e91e63/FFFFFF?text=${encodeURIComponent(fileName)}`;
-      setFormData(prev => ({ ...prev, imageUrl: placeholderUrl }));
+      // Atualizar formulário com URL real da imagem
+      setFormData(prev => ({ ...prev, imageUrl }));
       
       addToast({
-        type: 'info',
-        title: '📸 Imagem simulada',
-        description: 'Upload real requer configuração do Supabase Storage'
+        type: 'success',
+        title: '📸 Imagem enviada!',
+        description: 'Upload realizado com sucesso'
       });
 
     } catch (error: any) {
       console.error('Erro no upload:', error);
-      setUploadError('Erro no upload da imagem');
+      setUploadError(error.message || 'Erro no upload da imagem');
+      
+      addToast({
+        type: 'error',
+        title: 'Erro no upload',
+        description: error.message || 'Falha ao enviar imagem'
+      });
     } finally {
       setIsUploading(false);
       setTimeout(() => setUploadProgress(0), 2000);
@@ -271,6 +276,47 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
     }));
   }, []);
 
+  // Função para remover imagem
+  const removerImagem = useCallback(async () => {
+    if (formData.imageUrl) {
+      try {
+        // Extrair o nome do arquivo da URL se for do Supabase
+        if (formData.imageUrl.includes('supabase.co')) {
+          const urlParams = new URLSearchParams(formData.imageUrl.split('?')[1]);
+          const token = urlParams.get('token');
+          
+          if (token) {
+            // Decodificar o token JWT para obter o path
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const fileName = payload.url?.split('/').pop();
+            
+            if (fileName) {
+              await supabaseService.deleteImage(fileName);
+            }
+          }
+        }
+        
+        setFormData(prev => ({ ...prev, imageUrl: '' }));
+        
+        addToast({
+          type: 'success',
+          title: '🗑️ Imagem removida',
+          description: 'Imagem removida com sucesso'
+        });
+      } catch (error) {
+        console.error('Erro ao remover imagem:', error);
+        // Remover do formulário mesmo se der erro no servidor
+        setFormData(prev => ({ ...prev, imageUrl: '' }));
+        
+        addToast({
+          type: 'warning',
+          title: 'Imagem removida',
+          description: 'Imagem removida do formulário'
+        });
+      }
+    }
+  }, [formData.imageUrl, addToast]);
+
   // Função para formatar moeda
   const formatCurrency = useCallback((value: string) => {
     const numericValue = value.replace(/\D/g, '');
@@ -301,20 +347,20 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
     if (formData.preco <= 0) {
       novosErrors.preco = 'Preço deve ser maior que zero';
     }
-    if (formData.custo < 0) {
-      novosErrors.custo = 'Custo não pode ser negativo';
+    if (formData.precoCusto < 0) {
+      novosErrors.precoCusto = 'Custo não pode ser negativo';
     }
     
     if (!produto && formData.quantidade < 0) {
       novosErrors.quantidade = 'Quantidade não pode ser negativa';
     }
     
-    if (formData.minimo < 0) {
-      novosErrors.minimo = 'Estoque mínimo não pode ser negativo';
+    if (formData.estoqueMinimo < 0) {
+      novosErrors.estoqueMinimo = 'Estoque mínimo não pode ser negativo';
     }
 
-    if (formData.sku && formData.sku.length < 3) {
-      novosErrors.sku = 'SKU deve ter pelo menos 3 caracteres';
+    if (formData.codigoBarras && formData.codigoBarras.length < 3) {
+      novosErrors.codigoBarras = 'Código de barras deve ter pelo menos 3 caracteres';
     }
 
     setErrors(novosErrors);
@@ -584,15 +630,15 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
                         </div>
                       </FormField>
 
-                      <FormField label="Custo do Produto" error={errors.custo}>
+                      <FormField label="Custo do Produto" error={errors.precoCusto}>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
                           <Input
                             type="text"
-                            value={formData.custo > 0 ? formatCurrency(formData.custo.toString().replace('.', '')) : ''}
+                            value={formData.precoCusto > 0 ? formatCurrency(formData.precoCusto.toString().replace('.', '')) : ''}
                             onChange={(e) => {
                               const valor = parseCurrency(e.target.value);
-                              setFormData(prev => ({ ...prev, custo: valor }));
+                              setFormData(prev => ({ ...prev, precoCusto: valor }));
                             }}
                             placeholder="0,00"
                             className="pl-10 h-10"
@@ -602,11 +648,11 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
                     </div>
 
                     {/* Margem de Lucro */}
-                    {formData.preco > 0 && formData.custo > 0 && (
-                      <div className={`p-3 rounded-lg border ${getMargemColor(formData.margemLucro)}`}>
+                    {formData.preco > 0 && formData.precoCusto > 0 && (
+                      <div className={`p-3 rounded-lg border ${getMargemColor(margemLucro)}`}>
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium">Margem de Lucro</span>
-                          <span className="font-semibold">{formData.margemLucro.toFixed(1)}%</span>
+                          <span className="font-semibold">{margemLucro.toFixed(1)}%</span>
                         </div>
                       </div>
                     )}
@@ -622,11 +668,11 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
                         />
                       </FormField>
 
-                      <FormField label="Estoque Mínimo" error={errors.minimo}>
+                      <FormField label="Estoque Mínimo" error={errors.estoqueMinimo}>
                         <Input
                           type="number"
-                          value={formData.minimo}
-                          onChange={(e) => setFormData(prev => ({ ...prev, minimo: parseInt(e.target.value) || 0 }))}
+                          value={formData.estoqueMinimo}
+                          onChange={(e) => setFormData(prev => ({ ...prev, estoqueMinimo: parseInt(e.target.value) || 0 }))}
                           min="0"
                           className="h-10"
                         />
