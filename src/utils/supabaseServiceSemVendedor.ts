@@ -33,6 +33,7 @@ export interface DbProduto {
   genero?: string;
   cores?: string[];
   tipo_tecido?: string;
+  sku?: string;
 }
 
 export interface DbVenda {
@@ -80,6 +81,18 @@ export interface DbConfiguracao {
   updated_at: string;
 }
 
+export interface DbMeta {
+  id: string;
+  valor: number;
+  mes: string;
+  ano: number;
+  data_inicio: string;
+  data_fim: string;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // Tipos do frontend (compatibilidade)
 export interface Produto {
   id: string;
@@ -102,6 +115,19 @@ export interface Produto {
   genero?: string;
   cores?: string[];
   tipoTecido?: string;
+  sku?: string;
+}
+
+export interface Meta {
+  id: string;
+  valor: number;
+  mes: string;
+  ano: number;
+  dataInicio: Date;
+  dataFim: Date;
+  ativo: boolean;
+  criada: Date;
+  atualizada: Date;
 }
 
 export interface Venda {
@@ -131,14 +157,49 @@ export interface Meta {
   titulo?: string;
 }
 
+export interface CapitalGiro {
+  id?: string;
+  valorInicial: number;
+  dataConfiguracao: Date;
+  historico: Array<{
+    data: Date;
+    valor: number;
+    tipo: 'inicial' | 'retirada' | 'aporte';
+    descricao: string;
+  }>;
+}
+
 // Classe principal do serviço (sem vendedores)
 class SupabaseService {
   private client: SupabaseClient;
   private isConfigured: boolean;
 
   constructor() {
-    this.client = getSupabaseClient();
-    this.isConfigured = validateSupabaseConfig();
+    try {
+      console.log('🔧 [SupabaseService] Inicializando constructor...');
+      this.client = getSupabaseClient();
+      console.log('🔧 [SupabaseService] Cliente obtido:', !!this.client);
+      
+      this.isConfigured = validateSupabaseConfig();
+      console.log('🔧 [SupabaseService] Configuração validada:', this.isConfigured);
+      
+      // Log das funções de meta disponíveis
+      console.log('🔧 [SupabaseService] Funções de meta disponíveis:', {
+        obterMetas: typeof this.obterMetas,
+        criarMeta: typeof this.criarMeta,
+        criarOuAtualizarMeta: typeof this.criarOuAtualizarMeta
+      });
+      
+    } catch (error) {
+      console.warn('⚠️ [SupabaseService] Erro ao inicializar:', error);
+      this.isConfigured = false;
+      try {
+        // Tentar obter cliente mesmo com erro
+        this.client = getSupabaseClient();
+      } catch (clientError) {
+        console.error('❌ [SupabaseService] Erro ao obter cliente:', clientError);
+      }
+    }
   }
 
   // ============= PRODUTOS =============
@@ -184,7 +245,8 @@ class SupabaseService {
         tamanhos: produto.tamanhos,
         genero: produto.genero,
         cores: produto.cores,
-        tipo_tecido: produto.tipoTecido
+        tipo_tecido: produto.tipoTecido,
+        sku: produto.sku
       };
 
       const { data, error } = await this.client
@@ -227,7 +289,8 @@ class SupabaseService {
         tamanhos: produto.tamanhos,
         genero: produto.genero,
         cores: produto.cores,
-        tipo_tecido: produto.tipoTecido
+        tipo_tecido: produto.tipoTecido,
+        sku: produto.sku
       };
 
       const { data, error } = await this.client
@@ -611,7 +674,8 @@ class SupabaseService {
       tamanhos: dbProduto.tamanhos || [],
       genero: dbProduto.genero || 'unissex',
       cores: dbProduto.cores || [],
-      tipoTecido: dbProduto.tipo_tecido || ''
+      tipoTecido: dbProduto.tipo_tecido || '',
+      sku: dbProduto.sku || ''
     };
   }
 
@@ -704,10 +768,313 @@ class SupabaseService {
       throw error;
     }
   }
+
+  // ==========================================
+  // CRUD PARA METAS
+  // ==========================================
+
+  async criarMeta(meta: Omit<Meta, 'id' | 'criada' | 'atualizada'>): Promise<Meta> {
+    try {
+      if (!this.isConfigured || !this.client) {
+        logDemoOperation('Criar Meta', meta);
+        const metaDemo: Meta = {
+          id: `demo_${Date.now()}`,
+          ...meta,
+          criada: new Date(),
+          atualizada: new Date()
+        };
+        return metaDemo;
+      }
+
+      // Converter dados do frontend para formato DB
+      const metaDb: Omit<DbMeta, 'id' | 'created_at' | 'updated_at'> = {
+        valor: meta.valor,
+        mes: meta.mes,
+        ano: meta.ano,
+        data_inicio: meta.dataInicio.toISOString(),
+        data_fim: meta.dataFim.toISOString(),
+        ativo: meta.ativo
+      };
+
+      const { data, error } = await this.client
+        .from('metas')
+        .insert(metaDb)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao criar meta:', error);
+        throw new Error(`Erro ao criar meta: ${error.message}`);
+      }
+
+      return this.convertDbMetaToMeta(data);
+    } catch (error) {
+      console.error('Erro ao criar meta:', error);
+      throw error;
+    }
+  }
+
+  async obterMetas(): Promise<Meta[]> {
+    try {
+      console.log('🔍 [SupabaseService] Iniciando obterMetas...');
+      console.log('🔍 [SupabaseService] isConfigured:', this.isConfigured);
+      console.log('🔍 [SupabaseService] client existe:', !!this.client);
+      
+      if (!this.isConfigured || !this.client) {
+        console.log('🔍 [SupabaseService] Modo demo ativado - configuração inválida');
+        logDemoOperation('Listar Metas', {});
+        return [];
+      }
+
+      console.log('🔍 [SupabaseService] Fazendo query para tabela metas...');
+      const { data, error } = await this.client
+        .from('metas')
+        .select('*')
+        .eq('ativo', true)
+        .order('ano', { ascending: false })
+        .order('mes', { ascending: false });
+
+      console.log('🔍 [SupabaseService] Resultado da query:', { data, error });
+
+      if (error) {
+        console.error('❌ [SupabaseService] Erro na query de metas:', error);
+        throw new Error(`Erro ao obter metas: ${error.message}`);
+      }
+
+      const metas = (data || []).map(this.convertDbMetaToMeta);
+      console.log('🔍 [SupabaseService] Metas convertidas:', metas);
+      
+      return metas;
+    } catch (error) {
+      console.error('❌ [SupabaseService] Erro geral em obterMetas:', error);
+      throw error;
+    }
+  }
+
+  async obterMetaPorMesAno(mes: string, ano: number): Promise<Meta | null> {
+    try {
+      if (!this.isConfigured || !this.client) {
+        logDemoOperation('Obter Meta por Mês/Ano', { mes, ano });
+        return null;
+      }
+
+      const { data, error } = await this.client
+        .from('metas')
+        .select('*')
+        .eq('mes', mes)
+        .eq('ano', ano)
+        .eq('ativo', true)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Nenhum registro encontrado
+          return null;
+        }
+        console.error('Erro ao obter meta por mês/ano:', error);
+        throw new Error(`Erro ao obter meta: ${error.message}`);
+      }
+
+      return this.convertDbMetaToMeta(data);
+    } catch (error) {
+      console.error('Erro ao obter meta por mês/ano:', error);
+      throw error;
+    }
+  }
+
+  async atualizarMeta(id: string, metaAtualizada: Partial<Omit<Meta, 'id' | 'criada' | 'atualizada'>>): Promise<Meta> {
+    try {
+      if (!this.isConfigured || !this.client) {
+        logDemoOperation('Atualizar Meta', { id, ...metaAtualizada });
+        throw new Error('Modo demo: atualização de meta não implementada');
+      }
+
+      // Converter dados do frontend para formato DB
+      const metaDb: Partial<DbMeta> = {};
+      
+      if (metaAtualizada.valor !== undefined) metaDb.valor = metaAtualizada.valor;
+      if (metaAtualizada.mes !== undefined) metaDb.mes = metaAtualizada.mes;
+      if (metaAtualizada.ano !== undefined) metaDb.ano = metaAtualizada.ano;
+      if (metaAtualizada.dataInicio !== undefined) metaDb.data_inicio = metaAtualizada.dataInicio.toISOString();
+      if (metaAtualizada.dataFim !== undefined) metaDb.data_fim = metaAtualizada.dataFim.toISOString();
+      if (metaAtualizada.ativo !== undefined) metaDb.ativo = metaAtualizada.ativo;
+
+      metaDb.updated_at = new Date().toISOString();
+
+      const { data, error } = await this.client
+        .from('metas')
+        .update(metaDb)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao atualizar meta:', error);
+        throw new Error(`Erro ao atualizar meta: ${error.message}`);
+      }
+
+      return this.convertDbMetaToMeta(data);
+    } catch (error) {
+      console.error('Erro ao atualizar meta:', error);
+      throw error;
+    }
+  }
+
+  async criarOuAtualizarMeta(mes: string, ano: number, valor: number): Promise<Meta> {
+    try {
+      // Verificar se já existe uma meta para este mês/ano
+      const metaExistente = await this.obterMetaPorMesAno(mes, ano);
+
+      if (metaExistente) {
+        // Atualizar meta existente
+        return await this.atualizarMeta(metaExistente.id, { valor });
+      } else {
+        // Criar nova meta
+        const primeiroDia = new Date(ano, this.getMesNumero(mes), 1);
+        const ultimoDia = new Date(ano, this.getMesNumero(mes) + 1, 0);
+
+        return await this.criarMeta({
+          valor,
+          mes,
+          ano,
+          dataInicio: primeiroDia,
+          dataFim: ultimoDia,
+          ativo: true
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao criar ou atualizar meta:', error);
+      throw error;
+    }
+  }
+
+  private getMesNumero(nomeMes: string): number {
+    const meses = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    return meses.indexOf(nomeMes);
+  }
+
+  private convertDbMetaToMeta(dbMeta: DbMeta): Meta {
+    return {
+      id: dbMeta.id,
+      valor: dbMeta.valor,
+      mes: dbMeta.mes,
+      ano: dbMeta.ano,
+      dataInicio: new Date(dbMeta.data_inicio),
+      dataFim: new Date(dbMeta.data_fim),
+      ativo: dbMeta.ativo,
+      criada: new Date(dbMeta.created_at),
+      atualizada: new Date(dbMeta.updated_at)
+    };
+  }
+
+  // ==========================================
+  // CRUD PARA CAPITAL DE GIRO
+  // ==========================================
+
+  async getCapitalGiro(): Promise<CapitalGiro | null> {
+    try {
+      if (!this.isConfigured || !this.client) {
+        // Retornar dados demo do localStorage se disponível
+        const stored = localStorage.getItem('meuBentin-capitalGiro');
+        return stored ? JSON.parse(stored) : null;
+      }
+
+      const { data, error } = await this.client
+        .from('capital_giro')
+        .select('*')
+        .order('data_configuracao', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Nenhum registro encontrado
+          return null;
+        }
+        console.error('Erro ao buscar capital de giro:', error);
+        return null;
+      }
+
+      return {
+        id: data.id,
+        valorInicial: data.valor_inicial,
+        dataConfiguracao: new Date(data.data_configuracao),
+        historico: data.historico || []
+      };
+    } catch (error) {
+      console.error('Erro ao buscar capital de giro:', error);
+      return null;
+    }
+  }
+
+  async saveCapitalGiro(capitalGiro: CapitalGiro): Promise<CapitalGiro> {
+    try {
+      if (!this.isConfigured || !this.client) {
+        // Salvar no localStorage em modo demo
+        const capitalComId = { ...capitalGiro, id: capitalGiro.id || `capital_${Date.now()}` };
+        localStorage.setItem('meuBentin-capitalGiro', JSON.stringify(capitalComId));
+        logDemoOperation('Salvar Capital de Giro', capitalComId);
+        return capitalComId;
+      }
+
+      const capitalData = {
+        valor_inicial: capitalGiro.valorInicial,
+        data_configuracao: capitalGiro.dataConfiguracao.toISOString(),
+        historico: capitalGiro.historico
+      };
+
+      if (capitalGiro.id) {
+        // Atualizar existente
+        const { data, error } = await this.client
+          .from('capital_giro')
+          .update(capitalData)
+          .eq('id', capitalGiro.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Erro ao atualizar capital de giro:', error);
+          throw new Error(`Erro ao atualizar capital de giro: ${error.message}`);
+        }
+
+        return {
+          id: data.id,
+          valorInicial: data.valor_inicial,
+          dataConfiguracao: new Date(data.data_configuracao),
+          historico: data.historico || []
+        };
+      } else {
+        // Criar novo
+        const { data, error } = await this.client
+          .from('capital_giro')
+          .insert([capitalData])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Erro ao criar capital de giro:', error);
+          throw new Error(`Erro ao criar capital de giro: ${error.message}`);
+        }
+
+        return {
+          id: data.id,
+          valorInicial: data.valor_inicial,
+          dataConfiguracao: new Date(data.data_configuracao),
+          historico: data.historico || []
+        };
+      }
+    } catch (error) {
+      console.error('Erro ao salvar capital de giro:', error);
+      throw error;
+    }
+  }
 }
 
 // Instância singleton
 export const supabaseService = new SupabaseService();
 
 // Exports para compatibilidade
-export type { Produto, Venda, Meta };
+export type { Produto, Venda, Meta, DbMeta, CapitalGiro };

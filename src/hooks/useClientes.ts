@@ -10,7 +10,7 @@ import { projectId, publicAnonKey } from '../utils/supabase/info';
 
 // Tipos TypeScript
 export interface Cliente {
-  id?: string;
+  id: string;
   nome: string;
   data_nascimento?: string;
   telefone?: string;
@@ -19,8 +19,8 @@ export interface Cliente {
   endereco?: string;
   observacoes?: string;
   ativo?: boolean;
-  criado_em?: string;
-  atualizado_em?: string;
+  created_at?: string;
+  updated_at?: string;
   filhos?: Filho[];
 }
 
@@ -53,6 +53,7 @@ interface UseClientesReturn {
   
   // Operações CRUD de Clientes
   carregarClientes: () => Promise<void>;
+  recarregarClientes: () => Promise<void>;
   buscarCliente: (id: string) => Promise<Cliente | null>;
   criarCliente: (cliente: Omit<Cliente, 'id'>) => Promise<Cliente | null>;
   atualizarCliente: (id: string, dados: Partial<Cliente>) => Promise<Cliente | null>;
@@ -178,21 +179,50 @@ export function useClientes(): UseClientesReturn {
     setError(null);
     
     try {
+      console.log('🔄 [HOOK] Iniciando criação de cliente:', cliente);
+      
+      // Validação básica no frontend
+      if (!cliente.nome || cliente.nome.trim().length < 2) {
+        throw new Error('Nome é obrigatório e deve ter pelo menos 2 caracteres');
+      }
+      
+      // Preparar dados limpos
+      const dadosLimpos = {
+        nome: cliente.nome.trim(),
+        telefone: cliente.telefone?.trim() || undefined,
+        email: cliente.email?.trim() || undefined,
+        data_nascimento: cliente.data_nascimento || undefined,
+        instagram: cliente.instagram?.trim() || undefined,
+        endereco: cliente.endereco?.trim() || undefined,
+        observacoes: cliente.observacoes?.trim() || undefined,
+        ativo: true
+      };
+      
+      console.log('📝 [HOOK] Dados limpos para envio:', dadosLimpos);
+      
       const response = await makeRequest('/clientes', {
         method: 'POST',
-        body: JSON.stringify(cliente),
+        body: JSON.stringify(dadosLimpos),
       });
       
-      if (response.success) {
+      console.log('📡 [HOOK] Resposta do servidor:', response);
+      
+      if (response && response.success && response.cliente) {
+        console.log('✅ [HOOK] Cliente criado com sucesso:', response.cliente);
         await carregarClientes(); // Recarregar lista
         return response.cliente;
       }
       
-      throw new Error(response.error || 'Erro ao criar cliente');
+      const errorMsg = response?.error || response?.message || 'Resposta inválida do servidor';
+      throw new Error(errorMsg);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao criar cliente';
+      console.error('❌ [HOOK] Erro ao criar cliente:', {
+        error: err,
+        message: errorMessage,
+        cliente: cliente
+      });
       setError(errorMessage);
-      console.error('Erro ao criar cliente:', err);
       return null;
     } finally {
       setIsLoading(false);
@@ -261,25 +291,40 @@ export function useClientes(): UseClientesReturn {
     clienteId: string, 
     filho: Omit<Filho, 'id' | 'cliente_id'>
   ): Promise<Filho | null> => {
+    console.log('🔄 [HOOK] Iniciando adição de filho:', { clienteId, filho });
     setIsLoading(true);
     setError(null);
     
     try {
+      // Validar dados antes de enviar
+      if (!clienteId || !clienteId.trim()) {
+        throw new Error('ID do cliente é obrigatório');
+      }
+      
+      if (!filho.nome || !filho.nome.trim()) {
+        throw new Error('Nome do filho é obrigatório');
+      }
+
+      console.log('📤 [HOOK] Enviando requisição para adicionar filho...');
       const response = await makeRequest(`/clientes/${clienteId}/filhos`, {
         method: 'POST',
         body: JSON.stringify(filho),
       });
       
+      console.log('📝 [HOOK] Resposta da requisição:', response);
+      
       if (response.success) {
+        console.log('✅ [HOOK] Filho adicionado com sucesso, recarregando lista...');
         await carregarClientes(); // Recarregar lista
         return response.filho;
       }
       
-      throw new Error(response.error || 'Erro ao adicionar filho');
+      console.error('❌ [HOOK] Erro na resposta:', response);
+      throw new Error(response.error || response.details || 'Erro ao adicionar filho');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar filho';
+      console.error('❌ [HOOK] Erro crítico ao adicionar filho:', err);
       setError(errorMessage);
-      console.error('Erro ao adicionar filho:', err);
       return null;
     } finally {
       setIsLoading(false);
@@ -401,6 +446,29 @@ export function useClientes(): UseClientesReturn {
     setClienteSelecionado(cliente);
   }, []);
 
+  // =====================================================
+  // FUNÇÃO DE DEBUG PARA FILHOS
+  // =====================================================
+
+  const debugAdicionarFilho = useCallback(async (
+    clienteId: string, 
+    filho: Omit<Filho, 'id' | 'cliente_id'>
+  ): Promise<any> => {
+    console.log('🧪 [DEBUG] Iniciando teste de adição de filho');
+    try {
+      const response = await makeRequest('/debug/filho', {
+        method: 'POST',
+        body: JSON.stringify({ clienteId, filho }),
+      });
+      
+      console.log('📝 [DEBUG] Resposta do debug:', response);
+      return response;
+    } catch (err) {
+      console.error('❌ [DEBUG] Erro no teste:', err);
+      return { success: false, error: err };
+    }
+  }, [makeRequest]);
+
   // Carregar dados iniciais
   useEffect(() => {
     carregarClientes();
@@ -417,6 +485,7 @@ export function useClientes(): UseClientesReturn {
     
     // Operações CRUD de Clientes
     carregarClientes,
+    recarregarClientes: carregarClientes, // Alias para a mesma função
     buscarCliente,
     criarCliente,
     atualizarCliente,
@@ -431,6 +500,9 @@ export function useClientes(): UseClientesReturn {
     carregarEstatisticas,
     limparErro,
     selecionarCliente,
+    
+    // Debug
+    debugAdicionarFilho,
   };
 }
 

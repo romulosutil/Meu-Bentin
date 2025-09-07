@@ -5,6 +5,8 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { CurrencyInput } from './ui/currency-input';
+import { InputMonetario } from './ui/input-monetario';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { Progress } from './ui/progress';
@@ -787,37 +789,25 @@ const FormularioProdutoModerno: React.FC<FormularioProdutoModernoProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="custo" className="text-sm font-medium">Custo da Mercadoria *</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">R$</span>
-                  <Input
-                    id="custo"
-                    value={formData.custo > 0 ? formatCurrency(formData.custo.toString().replace('.', '')) : ''}
-                    onChange={(e) => {
-                      const valor = parseCurrency(e.target.value);
-                      setFormData(prev => ({ ...prev, custo: valor }));
-                    }}
-                    placeholder="0,00"
-                    className={`h-12 pl-12 text-lg font-mono ${errors.custo ? 'border-red-500' : ''}`}
-                  />
-                </div>
+                <InputMonetario
+                  id="custo"
+                  value={formData.custo}
+                  onUnmaskedChange={(valor) => setFormData(prev => ({ ...prev, custo: valor }))}
+                  placeholder="R$ 0,00"
+                  className={errors.custo ? 'aria-invalid' : ''}
+                />
                 {errors.custo && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.custo}</p>}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="preco" className="text-sm font-medium">Preço de Venda *</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">R$</span>
-                  <Input
-                    id="preco"
-                    value={formData.preco > 0 ? formatCurrency(formData.preco.toString().replace('.', '')) : ''}
-                    onChange={(e) => {
-                      const valor = parseCurrency(e.target.value);
-                      setFormData(prev => ({ ...prev, preco: valor }));
-                    }}
-                    placeholder="0,00"
-                    className={`h-12 pl-12 text-lg font-mono ${errors.preco ? 'border-red-500' : ''}`}
-                  />
-                </div>
+                <InputMonetario
+                  id="preco"
+                  value={formData.preco}
+                  onUnmaskedChange={(valor) => setFormData(prev => ({ ...prev, preco: valor }))}
+                  placeholder="R$ 0,00"
+                  className={errors.preco ? 'aria-invalid' : ''}
+                />
                 {errors.preco && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.preco}</p>}
               </div>
 

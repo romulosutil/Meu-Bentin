@@ -1,14 +1,23 @@
 // =====================================================
-// COMPONENTE DE VENDAS SEM VENDEDOR - VERSÃO SIMPLIFICADA
+// ARQUIVO REMOVIDO - SUBSTITUÍDO POR VendasSemVendedorFixed.tsx
 // =====================================================
-// Sistema simplificado de vendas diretas
-// Sem conceito de vendedor - foco apenas em clientes e produtos
+// Este componente foi substituído por VendasSemVendedorFixed.tsx
+// devido a problemas de cache e referências de importação.
+// Use o novo componente em seu lugar.
 // =====================================================
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { useEstoque, type Venda } from '../utils/EstoqueContextSemVendedor';
-import { useClientes, type Cliente } from '../hooks/useClientes';
-import GerenciarClientes from './GerenciarClientes';
+export default function VendasSemVendedor() {
+  return (
+    <div className="p-8 text-center">
+      <h2 className="text-2xl font-bold text-red-600 mb-4">
+        Componente Removido
+      </h2>
+      <p className="text-gray-600">
+        Este componente foi substituído por VendasSemVendedorFixed.tsx
+      </p>
+    </div>
+  );
+}
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -218,6 +227,8 @@ const VendasSemVendedor = () => {
 
     setIsLoading(true);
     try {
+      console.log('🔄 [VENDAS] Iniciando cadastro rápido de cliente:', novoClienteRapido);
+      
       const novoCliente = await criarCliente({
         nome: novoClienteRapido.nome.trim(),
         telefone: novoClienteRapido.telefone.trim() || undefined,
@@ -225,20 +236,25 @@ const VendasSemVendedor = () => {
         ativo: true
       });
 
+      console.log('📝 [VENDAS] Resultado do cadastro:', novoCliente);
+
       if (novoCliente) {
         setClienteVenda(novoCliente);
         setNovoClienteRapido({ nome: '', telefone: '', email: '' });
         addToast({
           type: 'success',
-          title: 'Cliente cadastrado',
+          title: 'Cliente cadastrado!',
           description: `${novoCliente.nome} foi cadastrado e selecionado para a venda.`
         });
+      } else {
+        throw new Error('Falha ao criar cliente - resultado nulo');
       }
     } catch (error) {
+      console.error('❌ [VENDAS] Erro no cadastro rápido:', error);
       addToast({
         type: 'error',
-        title: 'Erro ao cadastrar',
-        description: 'Não foi possível cadastrar o cliente. Tente novamente.'
+        title: 'Erro ao cadastrar cliente',
+        description: error instanceof Error ? error.message : 'Erro desconhecido. Tente novamente.'
       });
     } finally {
       setIsLoading(false);
@@ -791,7 +807,7 @@ const VendasSemVendedor = () => {
                         <Button
                           type="button"
                           onClick={cadastrarClienteRapido}
-                          disabled={!novoClienteRapido.nome.trim()}
+                          disabled={!novoClienteRapido.nome.trim() || isLoading}
                           className="w-full bentin-button-primary"
                         >
                           <UserPlus className="h-4 w-4 mr-2" />
@@ -1342,7 +1358,7 @@ const VendasSemVendedor = () => {
         )}
 
         {/* Modal de Gerenciar Clientes */}
-        <GerenciarClientes 
+        <GerenciarClientesCorrigido 
           open={modalGerenciarClientes}
           onCancel={() => setModalGerenciarClientes(false)}
         />
@@ -1960,10 +1976,12 @@ const VendasSemVendedor = () => {
       </ModalBase>
 
       {/* Modal de Gerenciar Clientes */}
-      <GerenciarClientes 
-        open={modalGerenciarClientes}
-        onCancel={() => setModalGerenciarClientes(false)}
-      />
+      {modalGerenciarClientes && (
+        <GerenciarClientesDefinitivo 
+          open={modalGerenciarClientes}
+          onCancel={() => setModalGerenciarClientes(false)}
+        />
+      )}
     </div>
   );
 };

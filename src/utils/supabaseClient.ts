@@ -57,8 +57,11 @@ const clearConflictingStorageKeys = () => {
 
 // Função para obter a instância única do Supabase
 export const getSupabaseClient = () => {
+  console.log('🔧 [getSupabaseClient] Iniciando...');
+  
   // Verificar se já existe uma instância global primeiro
   if (typeof window !== 'undefined' && window.__supabase_client_instance) {
+    console.log('🔧 [getSupabaseClient] Usando instância global existente');
     supabaseInstance = window.__supabase_client_instance;
     return supabaseInstance;
   }
@@ -66,7 +69,7 @@ export const getSupabaseClient = () => {
   if (!supabaseInstance) {
     // Verificar se já criamos uma instância antes
     if (typeof window !== 'undefined' && window.__supabase_instance_created) {
-      console.warn('⚠️  Tentativa de criar múltiplas instâncias do Supabase client detectada');
+      console.warn('⚠️ [getSupabaseClient] Tentativa de criar múltiplas instâncias detectada');
       return supabaseInstance;
     }
 
@@ -78,6 +81,12 @@ export const getSupabaseClient = () => {
     const storageKey = `sb-meu-bentin-${projectHostname}`;
     
     try {
+      console.log('🔧 [getSupabaseClient] Criando nova instância...');
+      console.log('🔧 [getSupabaseClient] Config:', {
+        url: SUPABASE_CONFIG.url ? 'OK' : 'Missing',
+        anonKey: SUPABASE_CONFIG.anonKey ? 'OK' : 'Missing'
+      });
+      
       supabaseInstance = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey, {
         auth: {
           autoRefreshToken: false, // Desabilitar para evitar múltiplas sessões
@@ -106,9 +115,9 @@ export const getSupabaseClient = () => {
         window.__supabase_instance_created = true;
       }
       
-      console.log('✅ Supabase client criado com sucesso');
+      console.log('✅ [getSupabaseClient] Cliente criado com sucesso');
     } catch (error) {
-      console.error('❌ Erro ao criar Supabase client:', error);
+      console.error('❌ [getSupabaseClient] Erro ao criar cliente:', error);
       throw error;
     }
   }

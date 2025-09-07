@@ -103,12 +103,16 @@ const FormularioNovoCliente: React.FC<FormularioNovoClienteProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🔄 [FORM_SELECIONAR] Submit iniciado');
+    console.log('📝 [FORM_SELECIONAR] Dados do formulário:', formData);
+    
     // Dados do cliente com filhos como propriedade extra
     const clienteCompleto = {
       ...formData,
       filhos: filhos.filter(filho => filho.nome.trim())
     };
     
+    console.log('📤 [FORM_SELECIONAR] Enviando dados:', clienteCompleto);
     onSalvar(clienteCompleto);
   };
 
@@ -355,13 +359,20 @@ export default function SelecionarCliente({
 
   const handleNovoCliente = async (dadosCliente: any) => {
     try {
+      console.log('🔄 [SELECIONAR] Iniciando criação de cliente:', dadosCliente);
       const resultado = await criarCliente(dadosCliente);
+      console.log('📝 [SELECIONAR] Resultado:', resultado);
+      
       if (resultado) {
+        console.log('✅ [SELECIONAR] Cliente criado com sucesso');
         setMostrarFormulario(false);
         onClienteSelect(resultado);
+      } else {
+        console.error('❌ [SELECIONAR] Resultado nulo do criarCliente');
+        throw new Error('Falha ao criar cliente - resultado nulo');
       }
     } catch (error) {
-      console.error('Erro ao criar cliente:', error);
+      console.error('❌ [SELECIONAR] Erro ao criar cliente:', error);
     }
   };
 

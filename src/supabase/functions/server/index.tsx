@@ -425,36 +425,88 @@ app.get('/make-server-f57293e2/clientes/:id', async (c) => {
 // POST /make-server-f57293e2/clientes - Criar novo cliente
 app.post('/make-server-f57293e2/clientes', async (c) => {
   try {
+    console.log('🔄 [SERVER] Recebendo requisição para criar cliente...');
+    
     const clienteData = await c.req.json() as Cliente;
+    console.log('📝 [SERVER] Dados recebidos:', clienteData);
     
     const validacao = validarCliente(clienteData);
     if (!validacao.valido) {
-      return c.json({ error: 'Dados inválidos', detalhes: validacao.erros }, 400);
+      console.log('⚠️ [SERVER] Dados inválidos:', validacao.erros);
+      return c.json({ 
+        error: 'Dados inválidos', 
+        detalhes: validacao.erros,
+        success: false 
+      }, 400);
     }
 
-    // Verificar se email já existe
-    if (clienteData.email) {
-      const { data: existingClient } = await supabase
-        .from('clientes')
-        .select('id')
-        .eq('email', clienteData.email)
-        .single();
+    // Verificar se email já existe (apenas se email foi fornecido)
+    if (clienteData.email && clienteData.email.trim()) {
+      try {
+        const { data: existingClient } = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('email', clienteData.email.trim())
+          .maybeSingle(); // Use maybeSingle em vez de single para evitar erro se não existir
 
-      if (existingClient) {
-        return c.json({ error: 'Email já cadastrado' }, 409);
+        if (existingClient) {
+          console.log('⚠️ [SERVER] Email já existe:', clienteData.email);
+          return c.json({ 
+            error: 'Email já cadastrado',
+            success: false 
+          }, 409);
+        }
+      } catch (emailError) {
+        console.log('⚠️ [SERVER] Erro ao verificar email existente:', emailError);
+        // Continuar com a criação mesmo se a verificação falhar
       }
     }
 
+    // Preparar dados para inserção
+    const dadosParaInserir = {
+      nome: clienteData.nome,
+      data_nascimento: clienteData.data_nascimento || null,
+      telefone: clienteData.telefone || null,
+      email: clienteData.email || null,
+      instagram: clienteData.instagram || null,
+      endereco: clienteData.endereco || null,
+      observacoes: clienteData.observacoes || null,
+      ativo: true
+    };
+
+    console.log('📤 [SERVER] Inserindo no banco:', dadosParaInserir);
+
     const { data: novoCliente, error } = await supabase
       .from('clientes')
-      .insert([clienteData])
+      .insert([dadosParaInserir])
       .select()
       .single();
 
     if (error) {
-      console.log('Erro ao criar cliente:', error);
-      return c.json({ error: 'Erro ao criar cliente' }, 500);
+      console.log('❌ [SERVER] Erro do Supabase ao criar cliente:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      
+      // Verificar se é erro de tabela não existir
+      if (error.code === 'PGRST106' || error.message.includes('does not exist')) {
+        return c.json({ 
+          error: 'Sistema de clientes não configurado',
+          details: 'Tabela clientes não existe',
+          success: false 
+        }, 503);
+      }
+      
+      return c.json({ 
+        error: 'Erro ao criar cliente no banco de dados',
+        details: error.message,
+        success: false 
+      }, 500);
     }
+
+    console.log('✅ [SERVER] Cliente criado com sucesso:', novoCliente);
 
     return c.json({ 
       success: true, 
@@ -462,8 +514,12 @@ app.post('/make-server-f57293e2/clientes', async (c) => {
       mensagem: 'Cliente criado com sucesso'
     }, 201);
   } catch (err) {
-    console.log('Erro interno ao criar cliente:', err);
-    return c.json({ error: 'Erro interno do servidor' }, 500);
+    console.log('❌ [SERVER] Erro crítico ao criar cliente:', err);
+    return c.json({ 
+      error: 'Erro interno do servidor',
+      details: err instanceof Error ? err.message : 'Erro desconhecido',
+      success: false 
+    }, 500);
   }
 });
 
@@ -536,25 +592,96 @@ app.delete('/make-server-f57293e2/clientes/:id', async (c) => {
 app.post('/make-server-f57293e2/clientes/:clienteId/filhos', async (c) => {
   try {
     const clienteId = c.req.param('clienteId');
+    console.log(`🔄 [FILHO] Iniciando adição de filho para cliente: ${clienteId}`);
+    
     const filhoData = await c.req.json() as Omit<Filho, 'cliente_id'>;
+    console.log('📝 [FILHO] Dados recebidos:', filhoData);
     
     const dadosCompletos = { ...filhoData, cliente_id: clienteId };
+    console.log('📝 [FILHO] Dados completos para inserção:', dadosCompletos);
     
     const validacao = validarFilho(dadosCompletos);
     if (!validacao.valido) {
-      return c.json({ error: 'Dados inválidos', detalhes: validacao.erros }, 400);
+      console.log('⚠️ [FILHO] Dados inválidos:', validacao.erros);
+      return c.json({ 
+        error: 'Dados inválidos', 
+        detalhes: validacao.erros,
+        success: false 
+      }, 400);
     }
+
+    // Verificar se o cliente existe primeiro
+    console.log('🔄 [FILHO] Verificando se cliente existe...');
+    const { data: clienteExiste, error: clienteError } = await supabase
+      .from('clientes')
+      .select('id')
+      .eq('id', clienteId)
+      .eq('ativo', true)
+      .maybeSingle();
+
+    if (clienteError) {
+      console.log('❌ [FILHO] Erro ao verificar cliente:', clienteError);
+      return c.json({ 
+        error: 'Erro ao verificar cliente',
+        details: clienteError.message,
+        success: false 
+      }, 500);
+    }
+
+    if (!clienteExiste) {
+      console.log('⚠️ [FILHO] Cliente não encontrado ou inativo:', clienteId);
+      return c.json({ 
+        error: 'Cliente não encontrado',
+        details: 'Cliente não existe ou está inativo',
+        success: false 
+      }, 404);
+    }
+
+    console.log('✅ [FILHO] Cliente válido encontrado, inserindo filho...');
+
+    // Preparar dados para inserção
+    const dadosParaInserir = {
+      cliente_id: clienteId,
+      nome: dadosCompletos.nome,
+      data_nascimento: dadosCompletos.data_nascimento || null,
+      genero: dadosCompletos.genero || null,
+      tamanho_preferido: dadosCompletos.tamanho_preferido || null,
+      observacoes: dadosCompletos.observacoes || null,
+    };
+
+    console.log('📤 [FILHO] Inserindo no banco:', dadosParaInserir);
 
     const { data: novoFilho, error } = await supabase
       .from('filhos')
-      .insert([dadosCompletos])
+      .insert([dadosParaInserir])
       .select()
       .single();
 
     if (error) {
-      console.log('Erro ao adicionar filho:', error);
-      return c.json({ error: 'Erro ao adicionar filho' }, 500);
+      console.log('❌ [FILHO] Erro detalhado do Supabase:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      
+      // Verificar se é erro de tabela não existir
+      if (error.code === 'PGRST106' || error.message.includes('does not exist')) {
+        return c.json({ 
+          error: 'Sistema de filhos não configurado',
+          details: 'Tabela filhos não existe',
+          success: false 
+        }, 503);
+      }
+      
+      return c.json({ 
+        error: 'Erro ao adicionar filho no banco de dados',
+        details: error.message,
+        success: false 
+      }, 500);
     }
+
+    console.log('✅ [FILHO] Filho criado com sucesso:', novoFilho);
 
     return c.json({ 
       success: true, 
@@ -562,8 +689,12 @@ app.post('/make-server-f57293e2/clientes/:clienteId/filhos', async (c) => {
       mensagem: 'Filho adicionado com sucesso'
     }, 201);
   } catch (err) {
-    console.log('Erro interno ao adicionar filho:', err);
-    return c.json({ error: 'Erro interno do servidor' }, 500);
+    console.log('❌ [FILHO] Erro crítico ao adicionar filho:', err);
+    return c.json({ 
+      error: 'Erro interno do servidor',
+      details: err instanceof Error ? err.message : 'Erro desconhecido',
+      success: false 
+    }, 500);
   }
 });
 
@@ -624,7 +755,7 @@ app.delete('/make-server-f57293e2/filhos/:id', async (c) => {
 
 
 // =====================================================
-// ROTA DE TESTE
+// ROTAS DE TESTE E DEBUG
 // =====================================================
 
 // GET /make-server-f57293e2/test - Teste do servidor
@@ -634,6 +765,100 @@ app.get('/make-server-f57293e2/test', async (c) => {
     timestamp: new Date().toISOString(),
     features: ['clientes', 'filhos', 'vendas', 'estatisticas']
   });
+});
+
+// POST /make-server-f57293e2/debug/filho - Teste específico para adicionar filho
+app.post('/make-server-f57293e2/debug/filho', async (c) => {
+  try {
+    console.log('🧪 [DEBUG] Teste de adição de filho iniciado');
+    
+    const { clienteId, filho } = await c.req.json();
+    console.log('📝 [DEBUG] Dados recebidos:', { clienteId, filho });
+
+    // 1. Testar se tabela filhos existe
+    const { data: testTable, error: tableError } = await supabase
+      .from('filhos')
+      .select('count')
+      .limit(1);
+
+    if (tableError) {
+      console.log('❌ [DEBUG] Tabela filhos não acessível:', tableError);
+      return c.json({
+        success: false,
+        step: 'table_check',
+        error: tableError.message,
+        details: tableError
+      });
+    }
+
+    console.log('✅ [DEBUG] Tabela filhos acessível');
+
+    // 2. Testar se cliente existe
+    const { data: cliente, error: clienteError } = await supabase
+      .from('clientes')
+      .select('id, nome')
+      .eq('id', clienteId)
+      .single();
+
+    if (clienteError) {
+      console.log('❌ [DEBUG] Erro ao buscar cliente:', clienteError);
+      return c.json({
+        success: false,
+        step: 'client_check',
+        error: clienteError.message,
+        details: clienteError
+      });
+    }
+
+    console.log('✅ [DEBUG] Cliente encontrado:', cliente);
+
+    // 3. Tentar inserir filho
+    const dadosFilho = {
+      cliente_id: clienteId,
+      nome: filho.nome,
+      data_nascimento: filho.data_nascimento || null,
+      genero: filho.genero || null,
+      tamanho_preferido: filho.tamanho_preferido || null,
+      observacoes: filho.observacoes || null,
+    };
+
+    console.log('📤 [DEBUG] Tentando inserir:', dadosFilho);
+
+    const { data: novoFilho, error: insertError } = await supabase
+      .from('filhos')
+      .insert([dadosFilho])
+      .select()
+      .single();
+
+    if (insertError) {
+      console.log('❌ [DEBUG] Erro na inserção:', insertError);
+      return c.json({
+        success: false,
+        step: 'insert_filho',
+        error: insertError.message,
+        details: insertError,
+        data_attempted: dadosFilho
+      });
+    }
+
+    console.log('✅ [DEBUG] Filho inserido com sucesso:', novoFilho);
+
+    return c.json({
+      success: true,
+      step: 'complete',
+      filho: novoFilho,
+      message: 'Filho adicionado com sucesso via debug'
+    });
+
+  } catch (err) {
+    console.log('❌ [DEBUG] Erro crítico:', err);
+    return c.json({
+      success: false,
+      step: 'critical_error',
+      error: err instanceof Error ? err.message : 'Erro desconhecido',
+      details: err
+    }, 500);
+  }
 });
 
 // GET /make-server-f57293e2/clientes/test - Teste específico do sistema de clientes

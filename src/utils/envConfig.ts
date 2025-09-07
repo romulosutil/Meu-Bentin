@@ -40,15 +40,22 @@ export const SUPABASE_CONFIG = {
 
 // Validação das configurações
 export function validateSupabaseConfig() {
-  if (!SUPABASE_CONFIG.url || !SUPABASE_CONFIG.anonKey) {
-    throw new Error('Configurações do Supabase incompletas. Verifique as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+  try {
+    if (!SUPABASE_CONFIG.url || !SUPABASE_CONFIG.anonKey) {
+      console.warn('Configurações do Supabase incompletas. Verifique as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+      return false;
+    }
+    
+    if (!SUPABASE_CONFIG.url.includes('supabase.co')) {
+      console.warn('URL do Supabase inválida');
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.warn('Erro na validação do Supabase:', error);
+    return false;
   }
-  
-  if (!SUPABASE_CONFIG.url.includes('supabase.co')) {
-    throw new Error('URL do Supabase inválida');
-  }
-  
-  return true;
 }
 
 // Log das configurações (sem expor dados sensíveis)

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import TesteCapitalGiro from './TesteCapitalGiro';
 import { useEstoque } from '../utils/EstoqueContextSemVendedor';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { StatsCard } from './ui/stats-card';
@@ -7,6 +8,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { CurrencyInput } from './ui/currency-input';
+import { InputMonetario } from './ui/input-monetario';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { useToast } from './ToastProvider';
 import { validateMeta } from '../utils/validation';
@@ -24,12 +27,13 @@ import {
 } from 'lucide-react';
 
 interface CapitalGiro {
+  id?: string;
   valorInicial: number;
   dataConfiguracao: Date;
   historico: {
     data: Date;
     valor: number;
-    tipo: 'inicial' | 'ajuste' | 'automatico';
+    tipo: 'inicial' | 'retirada' | 'aporte';
     descricao: string;
   }[];
 }
@@ -40,21 +44,39 @@ const Receita = () => {
   
   const [periodo, setPeriodo] = useState('30dias');
   const [modalCapitalGiro, setModalCapitalGiro] = useState(false);
-  const [valorCapitalGiro, setValorCapitalGiro] = useState('');
+  const [valorCapitalGiro, setValorCapitalGiro] = useState(0);
+  const [valorInputDisplay, setValorInputDisplay] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [erroTabela, setErroTabela] = useState(false);
   
   // Estado do capital de giro
-  const [capitalGiro, setCapitalGiro] = useState<CapitalGiro | null>(() => {
-    const stored = localStorage.getItem('meuBentin-capitalGiro');
-    return stored ? JSON.parse(stored) : null;
-  });
+  const [capitalGiro, setCapitalGiro] = useState<CapitalGiro | null>(null);
 
-  // Salvar capital de giro no localStorage
+  // Carregar capital de giro do Supabase
   useEffect(() => {
-    if (capitalGiro) {
-      localStorage.setItem('meuBentin-capitalGiro', JSON.stringify(capitalGiro));
-    }
-  }, [capitalGiro]);
+    const carregarCapitalGiro = async () => {
+      try {
+        const { supabaseService } = await import('../utils/supabaseServiceSemVendedor');
+        const capital = await supabaseService.getCapitalGiro();
+        setCapitalGiro(capital);
+      } catch (error: any) {
+        console.error('Erro ao carregar capital de giro:', error);
+        
+        // Verificar se é erro de tabela não encontrada
+        if (error.message && error.message.includes('capital_giro')) {
+          setErroTabela(true);
+        }
+        
+        // Fallback para localStorage se houver erro
+        const stored = localStorage.getItem('meuBentin-capitalGiro');
+        if (stored) {
+          setCapitalGiro(JSON.parse(stored));
+        }
+      }
+    };
+    
+    carregarCapitalGiro();
+  }, []);
 
   // Calcular período de dados
   const dadosPeriodo = useMemo(() => {
@@ -203,9 +225,27 @@ const Receita = () => {
     };
   }, [dadosPeriodo, produtos]);
 
+  // Funções auxiliares para formatação
+  const formatarValorMonetario = useCallback((valor: number) => {
+    if (!valor || valor === 0) return '';
+    return `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }, []);
+
+  const extrairNumeroValor = useCallback((valorFormatado: string) => {
+    const numero = valorFormatado.replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(numero) || 0;
+  }, []);
+
+  // Função para abrir modal e resetar estados
+  const abrirModalCapitalGiro = useCallback(() => {
+    setValorCapitalGiro(0);
+    setValorInputDisplay('');
+    setModalCapitalGiro(true);
+  }, []);
+
   // Configurar capital de giro inicial
   const configurarCapitalGiro = useCallback(async () => {
-    const validation = validateMeta(valorCapitalGiro);
+    const validation = validateMeta(valorCapitalGiro.toString());
     if (!validation.isValid) {
       addToast({
         type: 'error',
@@ -217,7 +257,7 @@ const Receita = () => {
 
     setIsLoading(true);
     try {
-      const valor = parseFloat(valorCapitalGiro);
+      const valor = valorCapitalGiro;
       const novoCapital: CapitalGiro = {
         valorInicial: valor,
         dataConfiguracao: new Date(),
@@ -229,15 +269,21 @@ const Receita = () => {
         }]
       };
 
-      setCapitalGiro(novoCapital);
+      // Salvar no Supabase
+      const { supabaseService } = await import('../utils/supabaseServiceSemVendedor');
+      const capitalSalvo = await supabaseService.saveCapitalGiro(novoCapital);
+      
+      setCapitalGiro(capitalSalvo);
       addToast({
         type: 'success',
         title: 'Capital de giro configurado',
         description: `R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})} definido como capital inicial`
       });
-      setValorCapitalGiro('');
+      setValorCapitalGiro(0);
+      setValorInputDisplay('');
       setModalCapitalGiro(false);
     } catch (err) {
+      console.error('Erro ao configurar capital:', err);
       addToast({
         type: 'error',
         title: 'Erro ao configurar capital',
@@ -246,7 +292,7 @@ const Receita = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [valorCapitalGiro, addToast]);
+  }, [valorCapitalGiro, addToast, formatarValorMonetario]);
 
   const getPeriodoLabel = useCallback((periodo: string) => {
     switch (periodo) {
@@ -266,7 +312,7 @@ const Receita = () => {
   const ModalCapitalGiro = () => (
     <Dialog open={modalCapitalGiro} onOpenChange={setModalCapitalGiro}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={abrirModalCapitalGiro}>
           <Settings className="h-4 w-4 mr-2" />
           Capital
         </Button>
@@ -285,32 +331,50 @@ const Receita = () => {
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="capitalInicial">Valor do Capital de Giro (R$)</Label>
-            <Input 
-              id="capitalInicial" 
-              type="number"
-              step="0.01"
-              min="1000"
-              value={valorCapitalGiro}
-              onChange={(e) => setValorCapitalGiro(e.target.value)}
-              placeholder={capitalGiro ? capitalGiro.valorInicial.toString() : "Ex: 50000.00"}
-              className="text-lg"
-            />
-            <p className="text-xs text-muted-foreground">
-              💡 Inclua o valor investido em estoque, reservas e capital operacional
+        <div className="space-y-6 py-6">
+          <div className="space-y-3">
+            <Label htmlFor="capitalInicial" className="text-sm font-semibold text-gray-700">
+              Valor do Capital de Giro (R$)
+            </Label>
+            <div className="relative">
+              <Input
+                id="capitalInicial"
+                type="text"
+                value={valorInputDisplay}
+                onChange={(e) => {
+                  const inputValue = e.target.value;
+                  setValorInputDisplay(inputValue);
+                  
+                  const numericValue = extrairNumeroValor(inputValue);
+                  setValorCapitalGiro(numericValue);
+                }}
+                onBlur={() => {
+                  if (valorCapitalGiro > 0) {
+                    setValorInputDisplay(formatarValorMonetario(valorCapitalGiro));
+                  }
+                }}
+                placeholder="R$ 50.000,00"
+                className="w-full h-12 px-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-bentin-pink focus:border-transparent transition-all duration-200"
+              />
+            </div>
+            <p className="text-xs text-gray-500 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Inclua o valor investido em estoque, reservas e capital operacional
             </p>
           </div>
           
           {!capitalGiro && (
-            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-blue-800">O que é Capital de Giro?</p>
-                  <p className="text-xs text-blue-700 mt-1">
-                    É o dinheiro disponível para as operações do dia a dia da loja, como compra de mercadorias, pagamento de fornecedores e despesas operacionais.
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200/50">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-blue-900 mb-1">
+                    💡 O que é Capital de Giro?
+                  </h4>
+                  <p className="text-xs text-blue-700 leading-relaxed">
+                    É o dinheiro disponível para as operações do dia a dia da loja, como compra de mercadorias, pagamento de fornecedores e despesas operacionais. É fundamental para manter o negócio funcionando.
                   </p>
                 </div>
               </div>
@@ -325,7 +389,7 @@ const Receita = () => {
           <Button 
             onClick={configurarCapitalGiro} 
             className="bentin-button-primary"
-            disabled={isLoading || !valorCapitalGiro}
+            disabled={isLoading || valorCapitalGiro <= 0}
           >
             {isLoading ? 'Configurando...' : 'Configurar'}
           </Button>
@@ -333,6 +397,15 @@ const Receita = () => {
       </DialogContent>
     </Dialog>
   );
+
+  // Se há erro de tabela, mostrar componente de teste
+  if (erroTabela) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <TesteCapitalGiro />
+      </div>
+    );
+  }
 
   // Estado sem dados ou capital de giro
   if (vendas.length === 0 || !capitalGiro) {
@@ -388,7 +461,7 @@ const Receita = () => {
             </p>
             
             {!capitalGiro && (
-              <Button className="bentin-button-primary" onClick={() => setModalCapitalGiro(true)}>
+              <Button className="bentin-button-primary" onClick={abrirModalCapitalGiro}>
                 <Wallet className="h-4 w-4 mr-2" />
                 Configurar Capital de Giro
               </Button>

@@ -84,6 +84,7 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [warnings, setWarnings] = useState<string[]>([]);
   const [novaCategoria, setNovaCategoria] = useState('');
+  const [novaCor, setNovaCor] = useState('');
   const [margemLucro, setMargemLucro] = useState(0);
   
   // Estados para upload de imagem
@@ -220,7 +221,7 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
         const timestamp = Date.now().toString().slice(-3);
         const sku = `${nomeSimplificado}${timestamp}`;
         
-        setFormData(prev => ({ ...prev, sku }));
+        setFormData(prev => ({ ...prev, codigoBarras: sku }));
         
         addToast({
           type: 'success',
@@ -317,20 +318,18 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
     }
   }, [formData.imageUrl, addToast]);
 
-  // Função para formatar moeda
-  const formatCurrency = useCallback((value: string) => {
-    const numericValue = value.replace(/\D/g, '');
-    const numberValue = parseInt(numericValue) / 100;
-    
-    return numberValue.toLocaleString('pt-BR', {
+  // Função para formatar moeda (CORRIGIDA)
+  const formatCurrency = useCallback((value: number): string => {
+    return value.toLocaleString('pt-BR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
   }, []);
 
-  // Função para converter moeda formatada para número
+  // Função para converter moeda formatada para número (CORRIGIDA)
   const parseCurrency = useCallback((value: string): number => {
-    return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
+    const cleaned = value.replace(/\./g, '').replace(',', '.');
+    return parseFloat(cleaned) || 0;
   }, []);
 
   // Validação do formulário
@@ -541,11 +540,11 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
                         />
                       </FormField>
 
-                      <FormField label="SKU (Código)" error={errors.sku}>
+                      <FormField label="SKU (Código)" error={errors.codigoBarras}>
                         <div className="flex gap-2">
                           <Input
-                            value={formData.sku}
-                            onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value.toUpperCase() }))}
+                            value={formData.codigoBarras}
+                            onChange={(e) => setFormData(prev => ({ ...prev, codigoBarras: e.target.value.toUpperCase() }))}
                             placeholder="Ex: VPR001"
                             className="h-10"
                           />
@@ -619,7 +618,7 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
                           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
                           <Input
                             type="text"
-                            value={formData.preco > 0 ? formatCurrency(formData.preco.toString().replace('.', '')) : ''}
+                            value={formData.preco > 0 ? formatCurrency(formData.preco) : ''}
                             onChange={(e) => {
                               const valor = parseCurrency(e.target.value);
                               setFormData(prev => ({ ...prev, preco: valor }));
@@ -635,7 +634,7 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
                           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
                           <Input
                             type="text"
-                            value={formData.precoCusto > 0 ? formatCurrency(formData.precoCusto.toString().replace('.', '')) : ''}
+                            value={formData.precoCusto > 0 ? formatCurrency(formData.precoCusto) : ''}
                             onChange={(e) => {
                               const valor = parseCurrency(e.target.value);
                               setFormData(prev => ({ ...prev, precoCusto: valor }));
@@ -681,8 +680,8 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
 
                     <FormField label="Fornecedor">
                       <Input
-                        value={formData.fornecedorNome}
-                        onChange={(e) => setFormData(prev => ({ ...prev, fornecedorNome: e.target.value }))}
+                        value={formData.fornecedor}
+                        onChange={(e) => setFormData(prev => ({ ...prev, fornecedor: e.target.value }))}
                         placeholder="Nome do fornecedor"
                         className="h-10"
                       />
@@ -800,22 +799,23 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
                       </RadioGroup>
                     </FormField>
 
-                    {/* Tamanhos */}
-                    <FormField label="Tamanhos Disponíveis">
+                    {/* Tamanhos - SELEÇÃO ÚNICA */}
+                    <FormField label="Tamanho">
                       <div className="space-y-3">
                         <div className="flex flex-wrap gap-2">
                           {configuracoes.tamanhosPadrao.map((tamanho) => (
                             <Button
                               key={tamanho}
                               type="button"
-                              variant={formData.tamanhos?.includes(tamanho) ? "default" : "outline"}
+                              variant={formData.tamanho === tamanho ? "default" : "outline"}
                               size="sm"
                               onClick={() => {
-                                if (formData.tamanhos?.includes(tamanho)) {
-                                  removerTamanho(tamanho);
-                                } else {
-                                  adicionarTamanho(tamanho);
-                                }
+                                // Seleção única - se já estiver selecionado, deseleciona
+                                setFormData(prev => ({ 
+                                  ...prev, 
+                                  tamanho: prev.tamanho === tamanho ? '' : tamanho,
+                                  tamanhos: prev.tamanho === tamanho ? [] : [tamanho]
+                                }));
                               }}
                               className="h-8 px-3"
                             >
@@ -824,35 +824,33 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
                           ))}
                         </div>
                         
-                        {formData.tamanhos && formData.tamanhos.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            <span className="text-sm text-gray-500">Selecionados:</span>
-                            {formData.tamanhos.map(tamanho => (
-                              <Badge 
-                                key={tamanho} 
-                                variant="outline"
-                                className="text-xs"
+                        {formData.tamanho && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-sm text-gray-500">Selecionado:</span>
+                            <Badge 
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {formData.tamanho}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFormData(prev => ({ ...prev, tamanho: '', tamanhos: [] }))}
+                                className="h-4 w-4 p-0 ml-1 hover:bg-transparent"
                               >
-                                {tamanho}
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removerTamanho(tamanho)}
-                                  className="h-4 w-4 p-0 ml-1 hover:bg-transparent"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </Badge>
-                            ))}
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </Badge>
                           </div>
                         )}
                       </div>
                     </FormField>
 
-                    {/* Cores */}
+                    {/* Cores - COM INPUT PARA ADICIONAR NOVAS */}
                     <FormField label="Cores Disponíveis">
                       <div className="space-y-3">
+                        {/* Cores Padrão */}
                         <div className="flex flex-wrap gap-2">
                           {configuracoes.coresPadrao.map((cor) => (
                             <Button
@@ -872,6 +870,42 @@ const FormularioProduto: React.FC<FormularioProdutoProps> = ({
                               {cor}
                             </Button>
                           ))}
+                        </div>
+
+                        {/* Input para Nova Cor */}
+                        <div className="flex gap-2">
+                          <Input
+                            value={novaCor}
+                            onChange={(e) => setNovaCor(e.target.value)}
+                            placeholder="Digite uma nova cor..."
+                            className="h-8 text-sm"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const corTrimmed = novaCor.trim();
+                                if (corTrimmed && !formData.cores?.includes(corTrimmed)) {
+                                  adicionarCor(corTrimmed);
+                                  setNovaCor('');
+                                }
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const corTrimmed = novaCor.trim();
+                              if (corTrimmed && !formData.cores?.includes(corTrimmed)) {
+                                adicionarCor(corTrimmed);
+                                setNovaCor('');
+                              }
+                            }}
+                            disabled={!novaCor.trim()}
+                            className="h-8 px-3"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
                         </div>
                         
                         {formData.cores && formData.cores.length > 0 && (

@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useEstoque } from '../utils/EstoqueContextSemVendedor';
+import { useInventoryKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { InventoryShortcutsHelp } from './ui/keyboard-shortcuts-help';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -45,6 +47,23 @@ const EstoqueModerno = () => {
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
   const [modoEdicao, setModoEdicao] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Atalhos de teclado para estoque
+  const { getShortcutsList } = useInventoryKeyboardShortcuts({
+    onNewProduct: () => setModalNovoProduto(true),
+    onSearch: () => {
+      const searchInput = document.querySelector('input[placeholder*="buscar"], input[placeholder*="pesquisar"]') as HTMLInputElement;
+      searchInput?.focus();
+    },
+    onRefresh: () => {
+      actions.carregarProdutos();
+      addToast({
+        type: 'info',
+        title: '🔄 Lista atualizada',
+        description: 'Produtos recarregados com sucesso'
+      });
+    }
+  });
 
   // Atualização de filtros
   const atualizarFiltro = useCallback((campo: keyof FiltrosEstoque, valor: string) => {
@@ -504,13 +523,16 @@ const EstoqueModerno = () => {
               </div>
             </div>
             
-            <Button 
-              onClick={() => setModalNovoProduto(true)}
-              className="bentin-button-primary"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Produto
-            </Button>
+            <div className="flex items-center gap-3">
+              <InventoryShortcutsHelp shortcuts={getShortcutsList()} />
+              <Button 
+                onClick={() => setModalNovoProduto(true)}
+                className="bentin-button-primary"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Produto
+              </Button>
+            </div>
           </div>
         </CardHeader>
 

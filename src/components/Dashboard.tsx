@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { useMetas } from '../hooks/useMetas';
 import { StatsCard } from './ui/stats-card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
@@ -23,16 +24,6 @@ import {
   Calendar
 } from 'lucide-react';
 
-interface Meta {
-  id: string;
-  valor: number;
-  mes: string;
-  ano: number;
-  dataInicio: Date;
-  dataFim: Date;
-  criada: Date;
-}
-
 interface MetricaCard {
   title: string;
   value: string;
@@ -46,51 +37,35 @@ interface MetricaCard {
 
 const Dashboard = () => {
   const { produtos = [], vendas = [] } = useEstoque();
+  const { 
+    metas = [], 
+    isLoading: isLoadingMetas = false, 
+    error: errorMetas = null,
+    criarOuAtualizarMeta, 
+    obterMetaAtual = () => null,
+    getMesNome = (mes: number) => {
+      const meses = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+      ];
+      return meses[mes] || '';
+    }
+  } = useMetas();
   
-  const [metas, setMetas] = useState<Meta[]>([]);
   const [novaMeta, setNovaMeta] = useState('');
   const [dialogAberto, setDialogAberto] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingMeta, setIsSavingMeta] = useState(false);
 
   // Simular carregamento inicial
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isLoadingMetas]);
 
-  // Inicializar meta do mês atual
-  useEffect(() => {
-    const agora = new Date();
-    const mesAtual = agora.getMonth();
-    const anoAtual = agora.getFullYear();
-    
-    const metaExistente = metas.find(m => m.mes === getMesNome(mesAtual) && m.ano === anoAtual);
-    
-    if (!metaExistente) {
-      const primeiroDia = new Date(anoAtual, mesAtual, 1);
-      const ultimoDia = new Date(anoAtual, mesAtual + 1, 0);
-      
-      const metaInicial: Meta = {
-        id: Date.now().toString(),
-        valor: 50000,
-        mes: getMesNome(mesAtual),
-        ano: anoAtual,
-        dataInicio: primeiroDia,
-        dataFim: ultimoDia,
-        criada: new Date()
-      };
-      
-      setMetas([metaInicial]);
-    }
-  }, [metas]);
 
-  const getMesNome = useCallback((mes: number): string => {
-    const meses = [
-      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-    ];
-    return meses[mes];
-  }, []);
 
   // Calcular métricas com memoização para performance
   const metricas = useMemo(() => {
@@ -167,7 +142,7 @@ const Dashboard = () => {
 
   // Meta atual
   const agora = new Date();
-  const metaAtual = metas.find(m => m.mes === getMesNome(agora.getMonth()) && m.ano === agora.getFullYear());
+  const metaAtual = obterMetaAtual();
   
   // Calcular dias restantes no mês
   const diasRestantes = useCallback(() => {
@@ -175,30 +150,42 @@ const Dashboard = () => {
     return ultimoDiaMes - agora.getDate();
   }, [agora]);
 
-  const adicionarNovaMeta = useCallback(() => {
-    if (!novaMeta || isNaN(Number(novaMeta))) return;
+  const adicionarNovaMeta = useCallback(async () => {
+    if (!novaMeta || isNaN(Number(novaMeta)) || Number(novaMeta) <= 0) return;
     
-    const primeiroDia = new Date(agora.getFullYear(), agora.getMonth(), 1);
-    const ultimoDia = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
+    setIsSavingMeta(true);
     
-    const meta: Meta = {
-      id: Date.now().toString(),
-      valor: Number(novaMeta),
-      mes: getMesNome(agora.getMonth()),
-      ano: agora.getFullYear(),
-      dataInicio: primeiroDia,
-      dataFim: ultimoDia,
-      criada: new Date()
-    };
-    
-    setMetas(prev => prev.filter(m => !(m.mes === meta.mes && m.ano === meta.ano)).concat(meta));
-    setNovaMeta('');
-    setDialogAberto(false);
-  }, [novaMeta, agora, getMesNome]);
+    try {
+      const mes = getMesNome(agora.getMonth());
+      const ano = agora.getFullYear();
+      const valor = Number(novaMeta);
+      
+      console.log('🎯 Salvando meta no Dashboard:', { mes, ano, valor });
+      
+      if (criarOuAtualizarMeta) {
+        const resultado = await criarOuAtualizarMeta(mes, ano, valor);
+        
+        if (resultado) {
+          console.log('✅ Meta salva com sucesso');
+          setNovaMeta('');
+          setDialogAberto(false);
+        } else {
+          console.warn('⚠️ Meta não foi salva - resultado nulo');
+        }
+      } else {
+        console.error('❌ Função criarOuAtualizarMeta não disponível');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao salvar meta no Dashboard:', error);
+      // Aqui você pode adicionar um toast de erro se necessário
+    } finally {
+      setIsSavingMeta(false);
+    }
+  }, [novaMeta, agora, getMesNome, criarOuAtualizarMeta]);
 
   // Configuração dos cards de métricas com o novo sistema redesenhado
 
-  if (isLoading) {
+  if (isLoading || isLoadingMetas) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -372,9 +359,21 @@ const Dashboard = () => {
             
             <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 flex-shrink-0">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-2 flex-shrink-0"
+                  onClick={() => {
+                    // Pré-preencher com a meta atual se existir
+                    if (metaAtual?.valor) {
+                      setNovaMeta(metaAtual.valor.toString());
+                    }
+                  }}
+                >
                   <Settings className="h-4 w-4" />
-                  <span className="hidden sm:inline">Configurar Meta</span>
+                  <span className="hidden sm:inline">
+                    {metaAtual ? 'Editar Meta' : 'Configurar Meta'}
+                  </span>
                   <span className="sm:hidden">Meta</span>
                 </Button>
               </DialogTrigger>
@@ -398,13 +397,27 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={adicionarNovaMeta} className="flex-1">
-                      Salvar Meta
+                    <Button 
+                      onClick={adicionarNovaMeta} 
+                      className="flex-1"
+                      disabled={isSavingMeta || !novaMeta || isNaN(Number(novaMeta)) || Number(novaMeta) <= 0}
+                    >
+                      {isSavingMeta ? 'Salvando...' : 'Salvar Meta'}
                     </Button>
-                    <Button variant="outline" onClick={() => setDialogAberto(false)}>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setDialogAberto(false)}
+                      disabled={isSavingMeta}
+                    >
                       Cancelar
                     </Button>
                   </div>
+                  
+                  {errorMetas && (
+                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                      Erro ao carregar metas: {errorMetas}
+                    </div>
+                  )}
                 </div>
               </DialogContent>
             </Dialog>
@@ -477,6 +490,8 @@ const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
+
+
     </div>
   );
 };

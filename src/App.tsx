@@ -7,14 +7,16 @@ import { useAuth } from './hooks/useAuth';
 import Login from './components/Login';
 import AuthenticatedHeader from './components/AuthenticatedHeader';
 import Dashboard from './components/Dashboard';
-import { ShoppingBag, Package, DollarSign, TrendingUp, BarChart3, Loader2 } from 'lucide-react';
+// Componentes de teste removidos
+import { ShoppingBag, Package, DollarSign, TrendingUp, BarChart3, Loader2, Settings } from 'lucide-react';
 import { initializeClipboard } from './utils/clipboard';
 
 // Lazy loading para componentes pesados
 const Estoque = lazy(() => import('./components/EstoqueModerno'));
-const Vendas = lazy(() => import('./components/VendasSemVendedor'));
+const Vendas = lazy(() => import('./components/VendasRefatorado')); // VERSÃO REFATORADA E CORRIGIDA
 const Receita = lazy(() => import('./components/Receita'));
 const AnaliseData = lazy(() => import('./components/AnaliseData'));
+// SistemaOtimizado removido após conclusão do QA
 
 // Tipos para melhor type safety
 type TabValue = 'dashboard' | 'estoque' | 'vendas' | 'receita' | 'analise';
@@ -36,7 +38,7 @@ const TABS_CONFIG: TabConfig[] = [
     icon: BarChart3,
     activeColor: 'data-[state=active]:bg-bentin-pink',
     iconBg: 'from-orange-100 to-orange-200',
-    iconColor: 'text-orange-600 group-data-[state=active]:text-white',
+    iconColor: 'text-orange-700 group-hover:text-orange-800 group-data-[state=active]:text-white',
     component: Dashboard
   },
   {
@@ -45,7 +47,7 @@ const TABS_CONFIG: TabConfig[] = [
     icon: Package,
     activeColor: 'data-[state=active]:bg-bentin-blue',
     iconBg: 'from-emerald-100 to-emerald-200',
-    iconColor: 'text-emerald-600 group-data-[state=active]:text-white',
+    iconColor: 'text-emerald-700 group-hover:text-emerald-800 group-data-[state=active]:text-white',
     component: Estoque
   },
   {
@@ -54,7 +56,7 @@ const TABS_CONFIG: TabConfig[] = [
     icon: ShoppingBag,
     activeColor: 'data-[state=active]:bg-bentin-green',
     iconBg: 'from-pink-100 to-pink-200',
-    iconColor: 'text-pink-600 group-data-[state=active]:text-white',
+    iconColor: 'text-pink-700 group-hover:text-pink-800 group-data-[state=active]:text-white',
     component: Vendas
   },
   {
@@ -63,7 +65,7 @@ const TABS_CONFIG: TabConfig[] = [
     icon: DollarSign,
     activeColor: 'data-[state=active]:bg-bentin-orange',
     iconBg: 'from-blue-100 to-blue-200',
-    iconColor: 'text-blue-600 group-data-[state=active]:text-white',
+    iconColor: 'text-blue-700 group-hover:text-blue-800 group-data-[state=active]:text-white',
     component: Receita
   },
   {
@@ -72,7 +74,7 @@ const TABS_CONFIG: TabConfig[] = [
     icon: TrendingUp,
     activeColor: 'data-[state=active]:bg-bentin-mint',
     iconBg: 'from-green-100 to-green-200',
-    iconColor: 'text-green-600 group-data-[state=active]:text-white',
+    iconColor: 'text-green-700 group-hover:text-green-800 group-data-[state=active]:text-white',
     component: AnaliseData
   }
 ];
@@ -88,7 +90,7 @@ const LoadingComponent = () => (
 );
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabValue>('dashboard');
+  const [activeTab, setActiveTab] = useState<TabValue>('dashboard'); // Voltar ao dashboard
   const { isAuthenticated, login } = useAuth();
 
   const handleTabChange = useCallback((value: string) => {
@@ -137,7 +139,7 @@ export default function App() {
                 
                 {/* TabsList com largura otimizada */}
                 <TabsList className="inline-flex bg-white rounded-2xl p-2 shadow-lg border border-border/50 h-auto">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {TABS_CONFIG.map((tab) => {
                       const IconComponent = tab.icon;
                       return (
@@ -157,8 +159,9 @@ export default function App() {
                             transition-all duration-200 
                             data-[state=active]:shadow-lg 
                             group
-                            hover:bg-gray-50
-                            data-[state=active]:hover:bg-transparent
+                            hover:data-[state=inactive]:bg-gray-100/90
+                            hover:data-[state=inactive]:shadow-md
+                            hover:data-[state=inactive]:scale-[1.02]
                           `}
                           aria-label={`Navegar para ${tab.label}`}
                         >
@@ -170,10 +173,12 @@ export default function App() {
                             ${tab.iconBg}
                             flex-shrink-0 
                             transition-all duration-200 
-                            group-data-[state=active]:from-white/20 
-                            group-data-[state=active]:to-white/30
+                            group-data-[state=active]:from-white/30 
+                            group-data-[state=active]:to-white/40
+                            group-hover:data-[state=inactive]:shadow-md
+                            group-hover:data-[state=inactive]:scale-105
                           `}>
-                            <IconComponent className={`h-5 w-5 ${tab.iconColor} transition-colors duration-200`} />
+                            <IconComponent className={`h-5 w-5 ${tab.iconColor} transition-all duration-200 group-hover:data-[state=inactive]:scale-110 group-data-[state=active]:text-white group-data-[state=active]:drop-shadow-sm`} />
                           </div>
                           <span className="font-semibold">
                             {tab.label}
