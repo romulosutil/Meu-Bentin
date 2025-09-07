@@ -7,7 +7,9 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from './ui/dialog';
+import { Alert, AlertDescription } from './ui/alert';
+import { Separator } from './ui/separator';
 import { CurrencyInput } from './ui/currency-input';
 import { InputMonetario } from './ui/input-monetario';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
@@ -23,7 +25,10 @@ import {
   PiggyBank,
   Calculator,
   Settings,
-  AlertCircle
+  AlertCircle,
+  CheckCircle,
+  X,
+  Loader2
 } from 'lucide-react';
 
 interface CapitalGiro {
@@ -45,7 +50,6 @@ const Receita = () => {
   const [periodo, setPeriodo] = useState('30dias');
   const [modalCapitalGiro, setModalCapitalGiro] = useState(false);
   const [valorCapitalGiro, setValorCapitalGiro] = useState(0);
-  const [valorInputDisplay, setValorInputDisplay] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [erroTabela, setErroTabela] = useState(false);
   
@@ -225,21 +229,9 @@ const Receita = () => {
     };
   }, [dadosPeriodo, produtos]);
 
-  // Funções auxiliares para formatação
-  const formatarValorMonetario = useCallback((valor: number) => {
-    if (!valor || valor === 0) return '';
-    return `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }, []);
-
-  const extrairNumeroValor = useCallback((valorFormatado: string) => {
-    const numero = valorFormatado.replace(/[^\d,]/g, '').replace(',', '.');
-    return parseFloat(numero) || 0;
-  }, []);
-
   // Função para abrir modal e resetar estados
   const abrirModalCapitalGiro = useCallback(() => {
     setValorCapitalGiro(0);
-    setValorInputDisplay('');
     setModalCapitalGiro(true);
   }, []);
 
@@ -280,7 +272,6 @@ const Receita = () => {
         description: `R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})} definido como capital inicial`
       });
       setValorCapitalGiro(0);
-      setValorInputDisplay('');
       setModalCapitalGiro(false);
     } catch (err) {
       console.error('Erro ao configurar capital:', err);
@@ -292,7 +283,7 @@ const Receita = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [valorCapitalGiro, addToast, formatarValorMonetario]);
+  }, [valorCapitalGiro, addToast]);
 
   const getPeriodoLabel = useCallback((periodo: string) => {
     switch (periodo) {
@@ -308,95 +299,230 @@ const Receita = () => {
   // Cores para gráficos
   const CORES = ['#e91e63', '#2196f3', '#4caf50', '#ff6b35', '#9c27b0'];
 
-  // Modal de configuração de capital de giro
-  const ModalCapitalGiro = () => (
-    <Dialog open={modalCapitalGiro} onOpenChange={setModalCapitalGiro}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" onClick={abrirModalCapitalGiro}>
-          <Settings className="h-4 w-4 mr-2" />
-          Capital
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="w-[95vw] max-w-md mx-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <PiggyBank className="h-5 w-5 text-bentin-orange" />
-            Capital de Giro
-          </DialogTitle>
-          <DialogDescription>
-            {capitalGiro 
-              ? 'Ajuste o valor do seu capital de giro'
-              : 'Defina o valor inicial do seu capital de giro'
-            }
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-6 py-6">
-          <div className="space-y-3">
-            <Label htmlFor="capitalInicial" className="text-sm font-semibold text-gray-700">
-              Valor do Capital de Giro (R$)
-            </Label>
-            <div className="relative">
-              <Input
-                id="capitalInicial"
-                type="text"
-                value={valorInputDisplay}
-                onChange={(e) => {
-                  const inputValue = e.target.value;
-                  setValorInputDisplay(inputValue);
-                  
-                  const numericValue = extrairNumeroValor(inputValue);
-                  setValorCapitalGiro(numericValue);
-                }}
-                onBlur={() => {
-                  if (valorCapitalGiro > 0) {
-                    setValorInputDisplay(formatarValorMonetario(valorCapitalGiro));
-                  }
-                }}
-                placeholder="R$ 50.000,00"
-                className="w-full h-12 px-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-bentin-pink focus:border-transparent transition-all duration-200"
-              />
-            </div>
-            <p className="text-xs text-gray-500 flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" />
-              Inclua o valor investido em estoque, reservas e capital operacional
-            </p>
-          </div>
+  // ====================================================================
+  // MODAL CAPITAL DE GIRO - RECONSTRUÍDO DO ZERO
+  // ====================================================================
+  // Seguindo rigorosamente o padrão visual dos modais "Nova Venda" e 
+  // "Novo Produto": layout estruturado, seções organizadas, footer fixo
+  // ====================================================================
+  const ModalCapitalGiro = () => {
+    const [localValorCapital, setLocalValorCapital] = useState(valorCapitalGiro);
+    const [validationError, setValidationError] = useState('');
+
+    const handleClose = useCallback(() => {
+      setModalCapitalGiro(false);
+      setLocalValorCapital(valorCapitalGiro);
+      setValidationError('');
+    }, [valorCapitalGiro]);
+
+    const handleSave = useCallback(async () => {
+      // Validação
+      if (localValorCapital <= 0) {
+        setValidationError('O valor do capital de giro deve ser maior que zero.');
+        return;
+      }
+      
+      setValidationError('');
+      setValorCapitalGiro(localValorCapital);
+      await configurarCapitalGiro();
+    }, [localValorCapital, configurarCapitalGiro]);
+
+    const formatarMoeda = useCallback((valor: number) => {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(valor);
+    }, []);
+
+    if (!modalCapitalGiro) return null;
+
+    return (
+      <div 
+        className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
+        onClick={handleClose}
+      >
+        <div 
+          className="modal-container relative bg-white rounded-xl shadow-xl w-[90vw] max-w-2xl flex flex-col border border-gray-200"
+          style={{ maxHeight: '90vh', overflow: 'hidden' }}
+          onClick={(e) => e.stopPropagation()}
+        >
           
-          {!capitalGiro && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200/50">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-blue-900 mb-1">
-                    💡 O que é Capital de Giro?
-                  </h4>
-                  <p className="text-xs text-blue-700 leading-relaxed">
-                    É o dinheiro disponível para as operações do dia a dia da loja, como compra de mercadorias, pagamento de fornecedores e despesas operacionais. É fundamental para manter o negócio funcionando.
-                  </p>
-                </div>
+          {/* Header Padronizado */}
+          <div className="modal-header flex items-center justify-between p-6 border-b border-border/40 bg-white" style={{ flexShrink: 0 }}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-bentin-orange/10 border border-bentin-orange/20">
+                <PiggyBank className="h-5 w-5 text-bentin-orange" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Capital de Giro
+                </h2>
+                <p className="text-sm text-gray-600">
+                  {capitalGiro 
+                    ? 'Ajuste o valor do seu capital de giro para controle financeiro'
+                    : 'Defina o valor inicial do seu capital de giro'
+                  }
+                </p>
               </div>
             </div>
-          )}
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClose}
+              className="h-9 w-9 p-0 hover:bg-gray-100 rounded-lg"
+              disabled={isLoading}
+              aria-label="Fechar modal"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Conteúdo Scrollável */}
+          <div className="modal-body bentin-scroll p-6 space-y-6" style={{ flexGrow: 1, overflowY: 'auto' }}>
+            
+            {/* Alerta de validação */}
+            {validationError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {validationError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* SEÇÃO: CONFIGURAÇÃO DE VALOR */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Calculator className="h-5 w-5 text-bentin-orange" />
+                <h3 className="text-lg font-semibold text-gray-900">Configuração do Capital</h3>
+                <Separator className="flex-1" />
+              </div>
+
+              {/* Input do valor */}
+              <div className="space-y-3">
+                <Label htmlFor="capital-giro-input" className="text-sm font-medium text-gray-700">
+                  Valor do Capital de Giro (R$)
+                </Label>
+                <InputMonetario
+                  id="capital-giro-input"
+                  value={localValorCapital}
+                  onUnmaskedChange={(value) => {
+                    setLocalValorCapital(Number(value));
+                    if (validationError) setValidationError('');
+                  }}
+                  placeholder="R$ 0,00"
+                  className="h-12 text-lg font-semibold"
+                />
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Inclua o valor investido em estoque, reservas e capital operacional
+                </p>
+              </div>
+
+              {/* Resumo atual */}
+              {capitalGiro > 0 && (
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Capital Atual:</span>
+                    <span className="text-lg font-bold text-bentin-orange">
+                      {formatarMoeda(capitalGiro)}
+                    </span>
+                  </div>
+                  {localValorCapital !== capitalGiro && (
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Novo Valor:</span>
+                        <span className="text-lg font-bold text-green-600">
+                          {formatarMoeda(localValorCapital)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* SEÇÃO: INFORMAÇÃO EDUCATIVA */}
+            {!capitalGiro && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <AlertCircle className="h-5 w-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Entenda o Capital de Giro</h3>
+                  <Separator className="flex-1" />
+                </div>
+
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200/50">
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-blue-100 rounded-lg">
+                        <Wallet className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-base font-semibold text-blue-900 mb-2">
+                          💡 O que é Capital de Giro?
+                        </h4>
+                        <p className="text-sm text-blue-700 leading-relaxed mb-3">
+                          É o dinheiro disponível para as operações do dia a dia da loja, como compra de mercadorias, pagamento de fornecedores e despesas operacionais. É fundamental para manter o negócio funcionando.
+                        </p>
+                        
+                        <div className="space-y-2">
+                          <h5 className="text-sm font-semibold text-blue-800">Inclua neste valor:</h5>
+                          <ul className="text-sm text-blue-700 space-y-1">
+                            <li className="flex items-center gap-2">
+                              <CheckCircle className="h-3 w-3 text-green-600" />
+                              Valor investido em estoque
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <CheckCircle className="h-3 w-3 text-green-600" />
+                              Reserva para emergências
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <CheckCircle className="h-3 w-3 text-green-600" />
+                              Capital para reposição de mercadorias
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer Fixo */}
+          <div className="modal-footer flex justify-end gap-3 p-6 border-t border-border/40 bg-gray-50/50" style={{ flexShrink: 0 }}>
+            <Button 
+              variant="outline" 
+              onClick={handleClose} 
+              disabled={isLoading}
+              className="px-6"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              disabled={isLoading || localValorCapital <= 0}
+              className="bentin-button-primary px-6 min-w-[120px]"
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Salvando...
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Configurar
+                </div>
+              )}
+            </Button>
+          </div>
         </div>
-        
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setModalCapitalGiro(false)} disabled={isLoading}>
-            Cancelar
-          </Button>
-          <Button 
-            onClick={configurarCapitalGiro} 
-            className="bentin-button-primary"
-            disabled={isLoading || valorCapitalGiro <= 0}
-          >
-            {isLoading ? 'Configurando...' : 'Configurar'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+      </div>
+    );
+  };
 
   // Se há erro de tabela, mostrar componente de teste
   if (erroTabela) {
@@ -449,23 +575,69 @@ const Receita = () => {
         {/* Estado de configuração inicial */}
         <Card className="bentin-card">
           <CardContent className="text-center py-12 sm:py-16">
-            <PiggyBank className="h-16 w-16 sm:h-20 sm:w-20 mx-auto mb-4 text-gray-300" />
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">
-              {!capitalGiro ? 'Configure seu Capital de Giro' : 'Aguardando Vendas'}
-            </h3>
-            <p className="text-sm sm:text-base text-gray-500 mb-6 max-w-md mx-auto">
-              {!capitalGiro 
-                ? 'Defina o valor inicial do seu capital de giro para acompanhar a saúde financeira da loja.'
-                : 'Registre vendas para visualizar gráficos e relatórios de receita.'
-              }
-            </p>
-            
-            {!capitalGiro && (
-              <Button className="bentin-button-primary" onClick={abrirModalCapitalGiro}>
-                <Wallet className="h-4 w-4 mr-2" />
-                Configurar Capital de Giro
-              </Button>
-            )}
+            <div className="max-w-md mx-auto space-y-6">
+              {/* Ícone principal */}
+              <div className="flex justify-center">
+                <div className="p-6 bg-gradient-to-br from-bentin-orange/10 to-bentin-orange/20 rounded-full border border-bentin-orange/20">
+                  <PiggyBank className="h-16 w-16 sm:h-20 sm:w-20 text-bentin-orange" />
+                </div>
+              </div>
+
+              {/* Título e descrição */}
+              <div className="space-y-3">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
+                  {!capitalGiro ? 'Configure seu Capital de Giro' : 'Aguardando Vendas'}
+                </h3>
+                <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
+                  {!capitalGiro 
+                    ? 'Defina o valor inicial do seu capital de giro para começar a acompanhar a saúde financeira da sua loja e ter controle total sobre receitas e gastos.'
+                    : 'Registre vendas para visualizar gráficos detalhados e relatórios completos de receita.'
+                  }
+                </p>
+              </div>
+              
+              {/* Botão de ação - sempre visível para debug */}
+              <div className="pt-4">
+                {!capitalGiro ? (
+                  <Button 
+                    className="bentin-button-primary px-8 py-3 text-base font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                    onClick={() => {
+                      console.log('🔥 BOTÃO CONFIGURAR CAPITAL CLICADO!');
+                      console.log('Capital atual:', capitalGiro);
+                      abrirModalCapitalGiro();
+                    }}
+                  >
+                    <Wallet className="h-5 w-5 mr-3" />
+                    Configurar Capital de Giro
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-500">
+                      Capital atual: <span className="font-semibold text-bentin-orange">
+                        R$ {capitalGiro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </p>
+                    <Button 
+                      variant="outline"
+                      className="border-bentin-orange text-bentin-orange hover:bg-bentin-orange/5"
+                      onClick={() => {
+                        console.log('🔧 BOTÃO AJUSTAR CAPITAL CLICADO!');
+                        abrirModalCapitalGiro();
+                      }}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Ajustar Capital
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Indicação de status para debug */}
+              <div className="mt-6 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 border border-gray-200">
+                <strong>Debug:</strong> Capital = {capitalGiro ? `R$ ${capitalGiro}` : 'Não configurado'} | 
+                Botão = {!capitalGiro ? 'Configurar' : 'Ajustar'}
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -532,7 +704,7 @@ const Receita = () => {
               </CardDescription>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Select value={periodo} onValueChange={setPeriodo}>
                 <SelectTrigger className="w-40">
                   <Calendar className="h-4 w-4 mr-2" />
@@ -547,6 +719,19 @@ const Receita = () => {
                 </SelectContent>
               </Select>
 
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  console.log('Botão Capital de Giro clicado!');
+                  abrirModalCapitalGiro();
+                }}
+                className="flex items-center gap-2 bg-white border-2 border-bentin-orange/30 hover:bg-bentin-orange/5 hover:border-bentin-orange/50 transition-all duration-200 shadow-sm"
+              >
+                <Settings className="h-4 w-4 text-bentin-orange" />
+                <span className="text-bentin-orange font-semibold">Capital</span>
+              </Button>
+              
               <ModalCapitalGiro />
             </div>
           </div>
