@@ -19,7 +19,7 @@ import { Plus, Search, Edit, Package, AlertTriangle, DollarSign, Trash2, ImageIc
 import { useToast } from './ToastProvider';
 import FormularioProduto from './FormularioProduto';
 import VisualizacaoProduto from './VisualizacaoProduto';
-import { supabaseService, Produto } from '../utils/supabaseServiceSemVendedor';
+import { Produto } from '../utils/supabaseServiceSemVendedor';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
 interface FiltrosEstoque {
@@ -87,27 +87,8 @@ const EstoqueModerno = () => {
         await actions.adicionarCategoria(produtoData.categoria);
       }
 
-      await supabaseService.adicionarProduto(produtoData);
-      
-      await actions.adicionarProduto({
-        nome: produtoData.nome,
-        categoria: produtoData.categoria,
-        preco: produtoData.preco,
-        precoCusto: produtoData.precoCusto,
-        quantidade: produtoData.quantidade,
-        estoqueMinimo: produtoData.estoqueMinimo,
-        vendedor: produtoData.vendedor,
-        ativo: produtoData.ativo,
-        cor: produtoData.cores?.join(', ') || produtoData.cor,
-        tamanho: produtoData.tamanhos?.join(', ') || produtoData.tamanho,
-        marca: produtoData.marca,
-        descricao: produtoData.descricao,
-        emPromocao: produtoData.emPromocao,
-        precoPromocional: produtoData.precoPromocional,
-        genero: produtoData.genero,
-        codigoBarras: produtoData.codigoBarras,
-        imageUrl: produtoData.imageUrl
-      });
+      // Usar apenas o actions.adicionarProduto que já faz a inserção no Supabase
+      await actions.adicionarProduto(produtoData);
 
       setModalNovoProduto(false);
       addToast({
