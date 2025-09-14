@@ -93,6 +93,15 @@ class DemoModeLogger {
       console.log(`   Logs suprimidos: ${this.state.suppressWarnings ? 'Sim' : 'Não'}`);
     }
   }
+
+  // Método de error compatível com console.error
+  error(message: string, error?: any) {
+    if (error) {
+      console.error(message, error);
+    } else {
+      console.error(message);
+    }
+  }
 }
 
 // Instância singleton

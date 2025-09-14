@@ -10,7 +10,7 @@ import { useEstoque, type Venda } from '../utils/EstoqueContextSemVendedor';
 import { useClientes } from '../hooks/useClientes';
 import { useSalesKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useValidationToasts } from '../hooks/useValidationToasts';
-import GerenciarClientesDefinitivo from './GerenciarClientesDefinitivo';
+import GerenciarClientes from './GerenciarClientes';
 import NovaVendaModal from './NovaVendaModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -312,8 +312,8 @@ const VendasRefatorado = () => {
         )}
       </ModalBase>
 
-      {/* MODAL GERENCIAR CLIENTES */}
-      <GerenciarClientesDefinitivo 
+      {/* MODAL GERENCIAR CLIENTES - VERSÃO CORRIGIDA COM FILHOS */}
+      <GerenciarClientes 
         open={modalGerenciarClientes}
         onCancel={() => setModalGerenciarClientes(false)}
       />

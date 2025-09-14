@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { 
   LineChart, 
   Line, 
@@ -13,7 +14,7 @@ import {
   XAxis, 
   YAxis, 
   CartesianGrid, 
-  Tooltip, 
+  Tooltip as RechartsTooltip, 
   ResponsiveContainer, 
   BarChart, 
   Bar, 
@@ -34,7 +35,11 @@ import {
   DollarSign,
   Users,
   Activity,
-  Zap
+  Zap,
+  Info,
+  Repeat,
+  Crown,
+  Clock
 } from 'lucide-react';
 
 const AnaliseData = () => {
@@ -148,6 +153,53 @@ const AnaliseData = () => {
     const produtosEsgotados = produtos.filter(p => p.quantidade === 0);
     const valorEstoque = produtos.reduce((total, p) => total + (p.preco * p.quantidade), 0);
     
+    // Análise de recorrência de vendas
+    const clientesVendas: { [key: string]: { vendas: any[]; nomeCliente: string; totalGasto: number } } = {};
+    
+    vendas.forEach(venda => {
+      if (venda.cliente_id) {
+        if (!clientesVendas[venda.cliente_id]) {
+          clientesVendas[venda.cliente_id] = {
+            vendas: [],
+            nomeCliente: venda.cliente || 'Cliente sem nome',
+            totalGasto: 0
+          };
+        }
+        clientesVendas[venda.cliente_id].vendas.push(venda);
+        clientesVendas[venda.cliente_id].totalGasto += venda.precoTotal;
+      }
+    });
+
+    // Clientes recorrentes (2 ou mais vendas)
+    const clientesRecorrentes = Object.values(clientesVendas).filter(cliente => cliente.vendas.length >= 2);
+    
+    // Calcular frequência média de compra para clientes recorrentes
+    let somaIntervalosDias = 0;
+    let totalIntervalos = 0;
+    
+    clientesRecorrentes.forEach(cliente => {
+      const vendasOrdenadas = cliente.vendas.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+      for (let i = 1; i < vendasOrdenadas.length; i++) {
+        const dataAnterior = new Date(vendasOrdenadas[i - 1].data);
+        const dataAtual = new Date(vendasOrdenadas[i].data);
+        const intervaloDias = (dataAtual.getTime() - dataAnterior.getTime()) / (1000 * 60 * 60 * 24);
+        somaIntervalosDias += intervaloDias;
+        totalIntervalos++;
+      }
+    });
+    
+    const frequenciaMediaDias = totalIntervalos > 0 ? Math.round(somaIntervalosDias / totalIntervalos) : 0;
+    
+    // Top 5 clientes (por valor total gasto)
+    const top5Clientes = Object.values(clientesVendas)
+      .sort((a, b) => b.totalGasto - a.totalGasto)
+      .slice(0, 5)
+      .map((cliente, index) => ({
+        ...cliente,
+        posicao: index + 1,
+        numeroCompras: cliente.vendas.length
+      }));
+    
     return {
       receitaTotal,
       receitaSemana,
@@ -157,7 +209,12 @@ const AnaliseData = () => {
       ultimasSemanas,
       produtosBaixoEstoque: produtosBaixoEstoque.length,
       produtosEsgotados: produtosEsgotados.length,
-      valorEstoque
+      valorEstoque,
+      // Dados de recorrência
+      clientesRecorrentes: clientesRecorrentes.length,
+      totalClientes: Object.keys(clientesVendas).length,
+      frequenciaMediaDias,
+      top5Clientes
     };
   }, [produtos, vendas]);
 
@@ -533,6 +590,99 @@ const AnaliseData = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Análise de Recorrência e Fidelização de Clientes */}
+      <Card className="bentin-card border-l-4 border-l-bentin-blue">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <div className="bentin-icon-wrapper bg-bentin-blue/10">
+              <Repeat className="h-5 w-5 text-bentin-blue" />
+            </div>
+            Análise de Recorrência de Clientes
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-gray-400" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Analisa a frequência de compra e fidelização dos clientes</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardTitle>
+          <CardDescription>
+            Compreenda os padrões de compra e identifique clientes fiéis
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  <span className="font-semibold text-blue-800">Clientes Recorrentes</span>
+                </div>
+                <p className="text-2xl font-bold text-blue-900">
+                  {analises.clientesRecorrentes}
+                </p>
+                <p className="text-sm text-blue-700">
+                  de {analises.totalClientes} clientes ({analises.totalClientes > 0 ? ((analises.clientesRecorrentes / analises.totalClientes) * 100).toFixed(1) : 0}%)
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-5 w-5 text-green-600" />
+                  <span className="font-semibold text-green-800">Frequência Média</span>
+                </div>
+                <p className="text-2xl font-bold text-green-900">
+                  {analises.frequenciaMediaDias > 0 ? `${analises.frequenciaMediaDias} dias` : 'N/A'}
+                </p>
+                <p className="text-sm text-green-700">
+                  entre compras dos clientes recorrentes
+                </p>
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <Crown className="h-4 w-4 text-bentin-orange" />
+                Top 5 Clientes por Valor Total
+              </h4>
+              <div className="space-y-3">
+                {analises.top5Clientes.length > 0 ? (
+                  analises.top5Clientes.map((cliente) => (
+                    <div key={cliente.nomeCliente} className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-white rounded-lg border hover:shadow-sm transition-shadow">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-bentin-orange text-white rounded-full flex items-center justify-center font-bold text-sm">
+                          {cliente.posicao}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-800">{cliente.nomeCliente}</p>
+                          <p className="text-sm text-gray-600">{cliente.numeroCompras} compras</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-bentin-green">
+                          R$ {cliente.totalGasto.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Ticket médio: R$ {(cliente.totalGasto / cliente.numeroCompras).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Nenhum dado de cliente disponível ainda</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Resumo Executivo */}
       <Card className="bentin-card">

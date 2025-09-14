@@ -21,6 +21,7 @@ import { StatsCard } from './ui/stats-card';
 import { FormSection, FormField } from './ui/form-section';
 import { LoadingState } from './ui/loading-state';
 import { EmptyState } from './ui/empty-state';
+import { PhoneInput, DateInput, InstagramInput } from './ui/masked-input';
 import { useClientes, Cliente, Filho } from '../hooks/useClientes';
 import { useToast } from './ToastProvider';
 import { 
@@ -79,15 +80,17 @@ const FormularioClienteDefinitivo: React.FC<{
     }
   }, [cliente]);
 
-  // Formatação de telefone
-  const formatarTelefone = useCallback((valor: string) => {
-    const apenasNumeros = valor.replace(/\D/g, '');
-    if (apenasNumeros.length <= 11) {
-      return apenasNumeros
-        .replace(/(\d{2})(\d)/, '($1) $2')
-        .replace(/(\d{4,5})(\d{4})/, '$1-$2');
-    }
-    return valor;
+  // Handlers para campos com máscara
+  const handleTelefoneChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, telefone: value }));
+  }, []);
+
+  const handleDataNascimentoChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, data_nascimento: value }));
+  }, []);
+
+  const handleInstagramChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, instagram: value }));
   }, []);
 
   // Validação do formulário

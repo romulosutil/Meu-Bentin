@@ -8,18 +8,18 @@ import Login from './components/Login';
 import AuthenticatedHeader from './components/AuthenticatedHeader';
 import Dashboard from './components/Dashboard';
 // Componentes de teste removidos
-import { ShoppingBag, Package, DollarSign, TrendingUp, BarChart3, Loader2, Settings } from 'lucide-react';
+import { ShoppingBag, Package, DollarSign, TrendingUp, BarChart3, Loader2, Settings, Wallet } from 'lucide-react';
 import { initializeClipboard } from './utils/clipboard';
 
 // Lazy loading para componentes pesados
 const Estoque = lazy(() => import('./components/EstoqueModerno'));
 const Vendas = lazy(() => import('./components/VendasRefatorado')); // VERSÃO REFATORADA E CORRIGIDA
-const Receita = lazy(() => import('./components/Receita'));
 const AnaliseData = lazy(() => import('./components/AnaliseData'));
+const Caixa = lazy(() => import('./components/CaixaComMascaras'));
 // SistemaOtimizado removido após conclusão do QA
 
 // Tipos para melhor type safety
-type TabValue = 'dashboard' | 'estoque' | 'vendas' | 'receita' | 'analise';
+type TabValue = 'dashboard' | 'estoque' | 'vendas' | 'caixa' | 'analise';
 
 interface TabConfig {
   value: TabValue;
@@ -60,13 +60,13 @@ const TABS_CONFIG: TabConfig[] = [
     component: Vendas
   },
   {
-    value: 'receita',
-    label: 'Receita',
-    icon: DollarSign,
-    activeColor: 'data-[state=active]:bg-bentin-orange',
-    iconBg: 'from-blue-100 to-blue-200',
-    iconColor: 'text-blue-700 group-hover:text-blue-800 group-data-[state=active]:text-white',
-    component: Receita
+    value: 'caixa',
+    label: 'Caixa',
+    icon: Wallet,
+    activeColor: 'data-[state=active]:bg-bentin-light-blue',
+    iconBg: 'from-purple-100 to-purple-200',
+    iconColor: 'text-purple-700 group-hover:text-purple-800 group-data-[state=active]:text-white',
+    component: Caixa
   },
   {
     value: 'analise',

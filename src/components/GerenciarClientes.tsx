@@ -27,6 +27,8 @@ import {
   Save, CheckCircle2
 } from 'lucide-react';
 
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+
 interface GerenciarClientesProps {
   open: boolean;
   onCancel: () => void;
@@ -138,7 +140,7 @@ const FormularioCliente: React.FC<FormularioClienteProps> = ({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form id="form-cliente" onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-6">
         
         {/* Informações Básicas */}
@@ -261,6 +263,9 @@ const FormularioFilho: React.FC<FormularioFilhoProps> = ({
 }) => {
   const { addToast } = useToast();
   
+  // Configurações padrão igual ao FormularioProduto
+  const tamanhosPadrao = ['4', '6', '8', '10', '12', 'P', 'M', 'G'];
+  
   const [formData, setFormData] = useState({
     nome: filho?.nome || '',
     data_nascimento: filho?.data_nascimento || '',
@@ -318,7 +323,7 @@ const FormularioFilho: React.FC<FormularioFilhoProps> = ({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form id="form-filho" onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-6">
         
         {/* Informações da Criança */}
@@ -356,35 +361,52 @@ const FormularioFilho: React.FC<FormularioFilhoProps> = ({
           description="Gênero e preferências de tamanho"
           icon={<ShirtIcon className="h-4 w-4" />}
         >
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField label="Gênero">
-                <Select 
-                  value={formData.genero} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, genero: value }))}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Selecione o gênero" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="masculino">👦 Masculino</SelectItem>
-                    <SelectItem value="feminino">👧 Feminino</SelectItem>
-                    <SelectItem value="unissex">🧒 Unissex</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormField>
+          <div className="space-y-6">
+            {/* Gênero com Radio Buttons */}
+            <FormField label="Gênero">
+              <RadioGroup 
+                value={formData.genero} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, genero: value }))}
+                disabled={isSubmitting}
+                className="flex gap-6"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="masculino" id="masculino" disabled={isSubmitting} />
+                  <Label htmlFor="masculino" className="cursor-pointer">Masculino</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="feminino" id="feminino" disabled={isSubmitting} />
+                  <Label htmlFor="feminino" className="cursor-pointer">Feminino</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="unissex" id="unissex" disabled={isSubmitting} />
+                  <Label htmlFor="unissex" className="cursor-pointer">Unissex</Label>
+                </div>
+              </RadioGroup>
+            </FormField>
 
-              <FormField label="Tamanho Preferido">
-                <Input
-                  value={formData.tamanho_preferido}
-                  onChange={(e) => setFormData(prev => ({ ...prev, tamanho_preferido: e.target.value }))}
-                  placeholder="Ex: 4 anos, P, M, G"
-                  className="h-10"
-                  disabled={isSubmitting}
-                />
-              </FormField>
-            </div>
+            {/* Tamanho com Botões */}
+            <FormField label="Tamanho">
+              <div className="flex flex-wrap gap-2">
+                {tamanhosPadrao.map((tamanho) => (
+                  <Button
+                    key={tamanho}
+                    type="button"
+                    variant={formData.tamanho_preferido === tamanho ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFormData(prev => ({ ...prev, tamanho_preferido: tamanho }))}
+                    disabled={isSubmitting}
+                    className={`h-10 px-4 ${
+                      formData.tamanho_preferido === tamanho 
+                        ? 'bg-bentin-pink text-white hover:bg-bentin-pink/90' 
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    {tamanho}
+                  </Button>
+                ))}
+              </div>
+            </FormField>
           </div>
         </FormSection>
 
@@ -757,78 +779,127 @@ const GerenciarClientes: React.FC<GerenciarClientesProps> = ({
                                     {cliente.nome}
                                   </h4>
                                   {(cliente.filhos?.length || 0) > 0 && (
-                                    <p className="text-xs text-muted-foreground">
-                                      {cliente.filhos?.length} {cliente.filhos?.length === 1 ? 'filho' : 'filhos'} cadastrado{cliente.filhos?.length === 1 ? '' : 's'}
-                                    </p>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="secondary" className="bg-bentin-blue/10 text-bentin-blue border-bentin-blue/20">
+                                        <Baby className="h-3 w-3 mr-1" />
+                                        {cliente.filhos?.length} filhos
+                                      </Badge>
+                                    </div>
                                   )}
                                 </div>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex items-center gap-2">
                                 <Button
-                                  size="sm"
                                   variant="outline"
-                                  onClick={() => {
-                                    setClienteParaFilho(cliente.id!);
-                                    setModalNovoFilho(true);
-                                  }}
-                                  className="h-8 px-3 text-xs hover:bg-bentin-green/10 hover:border-bentin-green hover:text-bentin-green"
-                                >
-                                  <Plus className="h-3 w-3 mr-1" />
-                                  Filho
-                                </Button>
-                                <Button
                                   size="sm"
-                                  variant="outline"
                                   onClick={() => {
                                     selecionarCliente(cliente);
                                     setModalEditarCliente(true);
                                   }}
-                                  className="h-8 px-3 text-xs hover:bg-bentin-blue/10 hover:border-bentin-blue hover:text-bentin-blue"
+                                  className="flex items-center gap-2 h-8 px-3 text-xs"
+                                  disabled={isSubmittingCliente || isSubmittingFilho}
                                 >
                                   <Edit3 className="h-3 w-3" />
+                                  Editar
+                                </Button>
+                                
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setClienteParaFilho(cliente.id);
+                                    setModalNovoFilho(true);
+                                  }}
+                                  className="flex items-center gap-2 h-8 px-3 text-xs bg-bentin-green/5 text-bentin-green hover:bg-bentin-green/10 border-bentin-green/20"
+                                  disabled={isSubmittingCliente || isSubmittingFilho}
+                                >
+                                  <Baby className="h-3 w-3" />
+                                  Adicionar Filho
                                 </Button>
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
+                            {/* Informações de contato */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                               {cliente.telefone && (
-                                <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50">
-                                  <Phone className="h-3 w-3 text-bentin-green" />
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Phone className="h-3 w-3 text-gray-400" />
                                   {cliente.telefone}
                                 </div>
                               )}
+                              
                               {cliente.email && (
-                                <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50">
-                                  <Mail className="h-3 w-3 text-bentin-blue" />
-                                  <span className="truncate">{cliente.email}</span>
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Mail className="h-3 w-3 text-gray-400" />
+                                  {cliente.email}
+                                </div>
+                              )}
+                              
+                              {cliente.instagram && (
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Instagram className="h-3 w-3 text-gray-400" />
+                                  {cliente.instagram}
+                                </div>
+                              )}
+                              
+                              {cliente.endereco && (
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <MapPin className="h-3 w-3 text-gray-400" />
+                                  {cliente.endereco}
+                                </div>
+                              )}
+                              
+                              {cliente.data_nascimento && (
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Cake className="h-3 w-3 text-gray-400" />
+                                  {calcularIdade(cliente.data_nascimento)} anos
                                 </div>
                               )}
                             </div>
-
+                            
+                            {/* Lista de filhos */}
                             {cliente.filhos && cliente.filhos.length > 0 && (
-                              <div className="mt-3 p-2 rounded-lg bg-gradient-to-r from-blue-50 to-pink-50 border border-blue-100">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <Baby className="h-3 w-3 text-bentin-blue" />
-                                  <span className="text-xs font-medium text-gray-700">
-                                    Filhos ({cliente.filhos.length})
-                                  </span>
-                                </div>
-                                <div className="flex flex-wrap gap-1">
+                              <div className="border-t border-gray-100 pt-4">
+                                <h5 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
+                                  <Baby className="h-4 w-4 text-bentin-green" />
+                                  Filhos Cadastrados
+                                </h5>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                   {cliente.filhos.map((filho) => (
-                                    <Badge 
-                                      key={filho.id} 
-                                      className="text-xs bg-white/80 text-gray-700 hover:bg-white border-0 shadow-sm"
-                                    >
-                                      <span className="mr-1">
-                                        {filho.genero === 'feminino' ? '👧' : filho.genero === 'masculino' ? '👦' : '🧒'}
-                                      </span>
-                                      {filho.nome}
-                                      {filho.data_nascimento && (
-                                        <span className="ml-1 text-gray-500">
-                                          ({calcularIdade(filho.data_nascimento)}a)
-                                        </span>
-                                      )}
-                                    </Badge>
+                                    <div key={filho.id} className="p-3 bg-gray-50 rounded-lg border">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <h6 className="font-medium text-gray-800">{filho.nome}</h6>
+                                        <Badge 
+                                          variant="outline" 
+                                          className="text-xs"
+                                        >
+                                          {filho.genero === 'masculino' ? '👦' : filho.genero === 'feminino' ? '👧' : '🧒'} 
+                                          {filho.genero || 'N/A'}
+                                        </Badge>
+                                      </div>
+                                      
+                                      <div className="space-y-1 text-xs text-gray-600">
+                                        {filho.data_nascimento && (
+                                          <div className="flex items-center gap-1">
+                                            <Cake className="h-3 w-3" />
+                                            {calcularIdade(filho.data_nascimento)} anos
+                                          </div>
+                                        )}
+                                        
+                                        {filho.tamanho_preferido && (
+                                          <div className="flex items-center gap-1">
+                                            <ShirtIcon className="h-3 w-3" />
+                                            Tamanho: {filho.tamanho_preferido}
+                                          </div>
+                                        )}
+                                        
+                                        {filho.observacoes && (
+                                          <div className="text-xs text-gray-500 mt-2">
+                                            {filho.observacoes}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
                                   ))}
                                 </div>
                               </div>
@@ -841,31 +912,37 @@ const GerenciarClientes: React.FC<GerenciarClientesProps> = ({
                 </div>
               )}
             </div>
-
+          </div>
+          
+          {/* Footer Fixo - EXATAMENTE como FormularioProduto */}
+          <div className="modal-footer flex justify-end gap-3 p-6 border-t border-border/40 bg-gray-50/50" style={{ flexShrink: 0 }}>
+            <Button 
+              variant="outline" 
+              onClick={onCancel} 
+              disabled={isSubmittingCliente || isSubmittingFilho}
+              className="px-6"
+            >
+              Fechar
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Submodal: Novo Cliente - Seguindo padrão FormularioProduto */}
+      {/* Modal Novo Cliente */}
       {modalNovoCliente && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center">
-          <div 
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
-            onClick={() => setModalNovoCliente(false)}
-          />
-          <div className="modal-container relative bg-white rounded-xl shadow-xl w-[90vw] max-w-3xl flex flex-col border border-gray-200" style={{ maxHeight: '90vh', overflow: 'hidden' }}>
-            
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setModalNovoCliente(false)} />
+          <div className="modal-container relative bg-white rounded-xl shadow-xl w-[90vw] max-w-4xl flex flex-col border border-gray-200" style={{ maxHeight: '90vh', overflow: 'hidden' }}>
             <div className="modal-header flex items-center justify-between p-6 border-b border-border/40 bg-white" style={{ flexShrink: 0 }}>
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-bentin-green/10 border border-bentin-green/20">
-                  <UserPlus className="h-5 w-5 text-bentin-green" />
+                <div className="p-2 rounded-lg bg-bentin-blue/10 border border-bentin-blue/20">
+                  <UserPlus className="h-5 w-5 text-bentin-blue" />
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">Novo Cliente</h2>
-                  <p className="text-sm text-gray-600">Cadastre um novo cliente responsável no sistema</p>
+                  <p className="text-sm text-gray-600">Cadastre um novo cliente</p>
                 </div>
               </div>
-              
               <Button
                 variant="ghost"
                 size="sm"
@@ -876,7 +953,6 @@ const GerenciarClientes: React.FC<GerenciarClientesProps> = ({
                 <X className="h-4 w-4" />
               </Button>
             </div>
-
             <div className="modal-body bentin-scroll p-6" style={{ flexGrow: 1, overflowY: 'auto' }}>
               <FormularioCliente
                 onSubmit={handleCriarCliente}
@@ -884,32 +960,30 @@ const GerenciarClientes: React.FC<GerenciarClientesProps> = ({
                 isSubmitting={isSubmittingCliente}
               />
             </div>
-
-            <div className="modal-footer flex items-center justify-end gap-3 p-6 border-t border-border/40 bg-gray-50/50" style={{ flexShrink: 0 }}>
-              <Button
-                variant="outline"
-                onClick={() => setModalNovoCliente(false)}
+            <div className="modal-footer flex justify-end gap-3 p-6 border-t border-border/40 bg-gray-50/50" style={{ flexShrink: 0 }}>
+              <Button 
+                variant="outline" 
+                onClick={() => setModalNovoCliente(false)} 
                 disabled={isSubmittingCliente}
-                className="px-6"
               >
                 Cancelar
               </Button>
-              <Button
-                type="submit"
+              <Button 
+                type="submit" 
                 form="form-cliente"
+                className="bentin-button-primary" 
                 disabled={isSubmittingCliente}
-                className="bentin-button-primary px-6"
               >
                 {isSubmittingCliente ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Salvando...
-                  </>
+                  </div>
                 ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Criar Cliente
-                  </>
+                  <div className="flex items-center gap-2">
+                    <Save className="h-4 w-4" />
+                    Salvar Cliente
+                  </div>
                 )}
               </Button>
             </div>
@@ -917,83 +991,63 @@ const GerenciarClientes: React.FC<GerenciarClientesProps> = ({
         </div>
       )}
 
-      {/* Submodal: Editar Cliente - Seguindo padrão FormularioProduto */}
-      {modalEditarCliente && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center">
-          <div 
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
-            onClick={() => {
-              setModalEditarCliente(false);
-              selecionarCliente(null);
-            }}
-          />
-          <div className="modal-container relative bg-white rounded-xl shadow-xl w-[90vw] max-w-3xl flex flex-col border border-gray-200" style={{ maxHeight: '90vh', overflow: 'hidden' }}>
-            
+      {/* Modal Editar Cliente */}
+      {modalEditarCliente && clienteSelecionado && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setModalEditarCliente(false)} />
+          <div className="modal-container relative bg-white rounded-xl shadow-xl w-[90vw] max-w-4xl flex flex-col border border-gray-200" style={{ maxHeight: '90vh', overflow: 'hidden' }}>
             <div className="modal-header flex items-center justify-between p-6 border-b border-border/40 bg-white" style={{ flexShrink: 0 }}>
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-bentin-blue/10 border border-bentin-blue/20">
-                  <Edit3 className="h-5 w-5 text-bentin-blue" />
+                <div className="p-2 rounded-lg bg-bentin-orange/10 border border-bentin-orange/20">
+                  <Edit3 className="h-5 w-5 text-bentin-orange" />
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">Editar Cliente</h2>
-                  <p className="text-sm text-gray-600">Atualize as informações do cliente selecionado</p>
+                  <p className="text-sm text-gray-600">Atualize os dados de {clienteSelecionado.nome}</p>
                 </div>
               </div>
-              
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  setModalEditarCliente(false);
-                  selecionarCliente(null);
-                }}
+                onClick={() => setModalEditarCliente(false)}
                 className="h-9 w-9 p-0 hover:bg-gray-100 rounded-lg"
                 disabled={isSubmittingCliente}
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
-
             <div className="modal-body bentin-scroll p-6" style={{ flexGrow: 1, overflowY: 'auto' }}>
               <FormularioCliente
-                cliente={clienteSelecionado || undefined}
+                cliente={clienteSelecionado}
                 onSubmit={handleEditarCliente}
-                onCancel={() => {
-                  setModalEditarCliente(false);
-                  selecionarCliente(null);
-                }}
+                onCancel={() => setModalEditarCliente(false)}
                 isSubmitting={isSubmittingCliente}
               />
             </div>
-
-            <div className="modal-footer flex items-center justify-end gap-3 p-6 border-t border-border/40 bg-gray-50/50" style={{ flexShrink: 0 }}>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setModalEditarCliente(false);
-                  selecionarCliente(null);
-                }}
+            <div className="modal-footer flex justify-end gap-3 p-6 border-t border-border/40 bg-gray-50/50" style={{ flexShrink: 0 }}>
+              <Button 
+                variant="outline" 
+                onClick={() => setModalEditarCliente(false)} 
                 disabled={isSubmittingCliente}
-                className="px-6"
               >
                 Cancelar
               </Button>
-              <Button
-                type="submit"
-                form="form-cliente-edit"
+              <Button 
+                type="submit" 
+                form="form-cliente"
+                className="bentin-button-primary" 
                 disabled={isSubmittingCliente}
-                className="bentin-button-primary px-6"
               >
                 {isSubmittingCliente ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Salvando...
-                  </>
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Atualizando...
+                  </div>
                 ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                  <div className="flex items-center gap-2">
+                    <Save className="h-4 w-4" />
                     Atualizar Cliente
-                  </>
+                  </div>
                 )}
               </Button>
             </div>
@@ -1001,83 +1055,65 @@ const GerenciarClientes: React.FC<GerenciarClientesProps> = ({
         </div>
       )}
 
-      {/* Submodal: Novo Filho - Seguindo padrão FormularioProduto */}
-      {modalNovoFilho && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center">
-          <div 
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
-            onClick={() => {
-              setModalNovoFilho(false);
-              setClienteParaFilho('');
-            }}
-          />
-          <div className="modal-container relative bg-white rounded-xl shadow-xl w-[90vw] max-w-2xl flex flex-col border border-gray-200" style={{ maxHeight: '90vh', overflow: 'hidden' }}>
-            
+      {/* Modal Novo Filho */}
+      {modalNovoFilho && clienteParaFilho && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setModalNovoFilho(false)} />
+          <div className="modal-container relative bg-white rounded-xl shadow-xl w-[90vw] max-w-4xl flex flex-col border border-gray-200" style={{ maxHeight: '90vh', overflow: 'hidden' }}>
             <div className="modal-header flex items-center justify-between p-6 border-b border-border/40 bg-white" style={{ flexShrink: 0 }}>
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-bentin-orange/10 border border-bentin-orange/20">
-                  <Baby className="h-5 w-5 text-bentin-orange" />
+                <div className="p-2 rounded-lg bg-bentin-green/10 border border-bentin-green/20">
+                  <Baby className="h-5 w-5 text-bentin-green" />
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">Adicionar Filho</h2>
-                  <p className="text-sm text-gray-600">Cadastre um novo filho ou dependente para o cliente</p>
+                  <p className="text-sm text-gray-600">
+                    Cadastre um filho para {clientes.find(c => c.id === clienteParaFilho)?.nome}
+                  </p>
                 </div>
               </div>
-              
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  setModalNovoFilho(false);
-                  setClienteParaFilho('');
-                }}
+                onClick={() => setModalNovoFilho(false)}
                 className="h-9 w-9 p-0 hover:bg-gray-100 rounded-lg"
                 disabled={isSubmittingFilho}
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
-
             <div className="modal-body bentin-scroll p-6" style={{ flexGrow: 1, overflowY: 'auto' }}>
               <FormularioFilho
                 clienteId={clienteParaFilho}
                 onSubmit={handleAdicionarFilho}
-                onCancel={() => {
-                  setModalNovoFilho(false);
-                  setClienteParaFilho('');
-                }}
+                onCancel={() => setModalNovoFilho(false)}
                 isSubmitting={isSubmittingFilho}
               />
             </div>
-
-            <div className="modal-footer flex items-center justify-end gap-3 p-6 border-t border-border/40 bg-gray-50/50" style={{ flexShrink: 0 }}>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setModalNovoFilho(false);
-                  setClienteParaFilho('');
-                }}
+            <div className="modal-footer flex justify-end gap-3 p-6 border-t border-border/40 bg-gray-50/50" style={{ flexShrink: 0 }}>
+              <Button 
+                variant="outline" 
+                onClick={() => setModalNovoFilho(false)} 
                 disabled={isSubmittingFilho}
-                className="px-6"
               >
                 Cancelar
               </Button>
-              <Button
-                type="submit"
+              <Button 
+                type="submit" 
                 form="form-filho"
+                className="bentin-button-primary" 
                 disabled={isSubmittingFilho}
-                className="bentin-button-primary px-6"
               >
                 {isSubmittingFilho ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Salvando...
-                  </>
+                  </div>
                 ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
+                  <div className="flex items-center gap-2">
+                    <Save className="h-4 w-4" />
                     Adicionar Filho
-                  </>
+                  </div>
                 )}
               </Button>
             </div>

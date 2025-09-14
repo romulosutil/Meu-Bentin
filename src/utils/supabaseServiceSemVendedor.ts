@@ -169,6 +169,15 @@ export interface CapitalGiro {
   }>;
 }
 
+export interface MovimentacaoCaixa {
+  id?: string;
+  tipo: 'investimento' | 'retirada' | 'perda' | 'venda';
+  descricao?: string;
+  valor: number;
+  venda_id?: string;
+  criado_em?: string;
+}
+
 // Classe principal do serviço (sem vendedores)
 class SupabaseService {
   private client: SupabaseClient;
@@ -375,17 +384,26 @@ class SupabaseService {
 
   async addVenda(venda: Omit<Venda, 'id'>): Promise<Venda> {
     try {
+      // Garantir que data_venda está sempre presente e no formato correto
+      const dataVenda = venda.data || new Date().toISOString();
+      
+      console.log('🔄 Adicionando venda:', {
+        cliente: venda.cliente,
+        produto: venda.nomeProduto,
+        data_venda: dataVenda
+      });
+      
       // Inserir venda principal (sem vendedor_id)
       const dbVenda: Omit<DbVenda, 'id' | 'created_at' | 'updated_at'> = {
-        cliente_id: venda.cliente_id,
-        cliente_nome: venda.cliente,
-        data_venda: venda.data,
-        subtotal: venda.precoTotal,
-        desconto: venda.desconto,
-        total: venda.precoTotal,
-        forma_pagamento: venda.formaPagamento,
+        cliente_id: venda.cliente_id || null,
+        cliente_nome: venda.cliente || 'Cliente não informado',
+        data_venda: dataVenda,
+        subtotal: venda.precoTotal || 0,
+        desconto: venda.desconto || 0,
+        total: venda.precoTotal || 0,
+        forma_pagamento: venda.formaPagamento || 'dinheiro',
         status: 'concluida',
-        observacoes: venda.observacoes
+        observacoes: venda.observacoes || null
       };
 
       const { data: vendaData, error: vendaError } = await this.client
@@ -395,19 +413,21 @@ class SupabaseService {
         .single();
 
       if (vendaError) {
-        console.error('Erro ao adicionar venda:', vendaError);
+        console.error('❌ Erro SQL ao inserir venda:', vendaError);
         throw vendaError;
       }
+
+      console.log('✅ Venda principal criada:', vendaData.id);
 
       // Inserir item da venda
       const dbItem: Omit<DbItemVenda, 'id'> = {
         venda_id: vendaData.id,
-        produto_id: venda.produtoId,
-        produto_nome: venda.nomeProduto,
-        quantidade: venda.quantidade,
-        preco_unitario: venda.precoUnitario,
+        produto_id: venda.produtoId || 'produto-indefinido',
+        produto_nome: venda.nomeProduto || 'Produto não informado',
+        quantidade: venda.quantidade || 1,
+        preco_unitario: venda.precoUnitario || 0,
         desconto_item: 0,
-        subtotal: venda.precoTotal
+        subtotal: venda.precoTotal || 0
       };
 
       const { data: itemData, error: itemError } = await this.client
@@ -417,21 +437,26 @@ class SupabaseService {
         .single();
 
       if (itemError) {
-        console.warn('⚠️ Erro ao adicionar itens da venda, mas venda foi criada');
+        console.warn('⚠️ Erro ao adicionar itens da venda, mas venda foi criada:', itemError);
+        // Mesmo com erro no item, retornar a venda como criada
         return {
           ...venda,
           id: vendaData.id,
-          vendedor: 'Venda Direta'
+          vendedor: 'Venda Direta',
+          data: dataVenda
         };
       }
+
+      console.log('✅ Item da venda criado:', itemData.id);
 
       return {
         ...venda,
         id: vendaData.id,
-        vendedor: 'Venda Direta'
+        vendedor: 'Venda Direta',
+        data: dataVenda
       };
     } catch (error) {
-      console.error('Erro ao adicionar venda:', error);
+      console.error('❌ Erro crítico ao adicionar venda:', error);
       throw error;
     }
   }
@@ -766,6 +791,166 @@ class SupabaseService {
     } catch (error) {
       console.error('Erro ao deletar imagem:', error);
       throw error;
+    }
+  }
+
+  // ============= CAIXA =============
+  async buscarMovimentacoesCaixa(): Promise<{ sucesso: boolean; dados?: MovimentacaoCaixa[]; erro?: string }> {
+    try {
+      if (!this.isConfigured || !this.client) {
+        logDemoOperation('Buscar Movimentações Caixa', {});
+        return { sucesso: true, dados: [] };
+      }
+
+      const { data, error } = await this.client
+        .from('caixa_movimentacoes')
+        .select('*')
+        .order('criado_em', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar movimentações do caixa:', error);
+        return { sucesso: false, erro: error.message };
+      }
+
+      return { sucesso: true, dados: data || [] };
+    } catch (error) {
+      console.error('Erro ao buscar movimentações do caixa:', error);
+      return { sucesso: false, erro: 'Erro interno' };
+    }
+  }
+
+  async adicionarMovimentacaoCaixa(movimentacao: Omit<MovimentacaoCaixa, 'id' | 'criado_em'>): Promise<{ sucesso: boolean; dados?: MovimentacaoCaixa; erro?: string }> {
+    try {
+      if (!this.isConfigured || !this.client) {
+        logDemoOperation('Adicionar Movimentação Caixa', movimentacao);
+        const movDemo: MovimentacaoCaixa = {
+          id: `demo_${Date.now()}`,
+          ...movimentacao,
+          criado_em: new Date().toISOString()
+        };
+        return { sucesso: true, dados: movDemo };
+      }
+
+      const { data, error } = await this.client
+        .from('caixa_movimentacoes')
+        .insert([movimentacao])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao adicionar movimentação do caixa:', error);
+        return { sucesso: false, erro: error.message };
+      }
+
+      return { sucesso: true, dados: data };
+    } catch (error) {
+      console.error('Erro ao adicionar movimentação do caixa:', error);
+      return { sucesso: false, erro: 'Erro interno' };
+    }
+  }
+
+  async calcularDashboardCaixa(): Promise<{ sucesso: boolean; dados?: any; erro?: string }> {
+    try {
+      if (!this.isConfigured || !this.client) {
+        logDemoOperation('Calcular Dashboard Caixa', {});
+        return {
+          sucesso: true,
+          dados: {
+            balancoAtual: 0,
+            lucroPrejuizo: 0,
+            projecaoLucro: 0,
+            totalInvestimentos: 0,
+            totalRetiradas: 0,
+            totalPerdas: 0,
+            totalVendas: 0
+          }
+        };
+      }
+
+      // Buscar movimentações para calcular balanço
+      const { data: movimentacoes, error: errorMov } = await this.client
+        .from('caixa_movimentacoes')
+        .select('tipo, valor');
+
+      if (errorMov) {
+        console.error('Erro ao buscar movimentações para dashboard:', errorMov);
+        return { sucesso: false, erro: errorMov.message };
+      }
+
+      // Buscar vendas concluídas para calcular total de vendas
+      const { data: vendas, error: errorVendas } = await this.client
+        .from('vendas')
+        .select('total')
+        .eq('status', 'concluida');
+
+      if (errorVendas) {
+        console.error('Erro ao buscar vendas para dashboard:', errorVendas);
+        return { sucesso: false, erro: errorVendas.message };
+      }
+
+      // Buscar produtos para calcular projeção
+      const { data: produtos, error: errorProdutos } = await this.client
+        .from('produtos')
+        .select('preco, preco_custo, quantidade_estoque')
+        .eq('ativo', true);
+
+      if (errorProdutos) {
+        console.error('Erro ao buscar produtos para dashboard:', errorProdutos);
+        return { sucesso: false, erro: errorProdutos.message };
+      }
+
+      // Calcular totais por tipo
+      let totalInvestimentos = 0;
+      let totalRetiradas = 0;
+      let totalPerdas = 0;
+      
+      for (const mov of movimentacoes || []) {
+        switch (mov.tipo) {
+          case 'investimento':
+            totalInvestimentos += mov.valor;
+            break;
+          case 'retirada':
+            totalRetiradas += mov.valor;
+            break;
+          case 'perda':
+            totalPerdas += mov.valor;
+            break;
+        }
+      }
+
+      // Calcular total de vendas
+      const totalVendas = (vendas || []).reduce((sum, venda) => sum + venda.total, 0);
+
+      // Calcular balanço atual
+      const balancoAtual = totalInvestimentos + totalVendas - totalRetiradas - totalPerdas;
+
+      // Calcular projeção de lucro (valor de venda do estoque - custo do estoque)
+      let valorVendaEstoque = 0;
+      let custoEstoque = 0;
+      
+      for (const produto of produtos || []) {
+        const quantidade = produto.quantidade_estoque || 0;
+        valorVendaEstoque += (produto.preco || 0) * quantidade;
+        custoEstoque += (produto.preco_custo || 0) * quantidade;
+      }
+      
+      const projecaoLucro = valorVendaEstoque - custoEstoque;
+
+      return {
+        sucesso: true,
+        dados: {
+          balancoAtual,
+          lucroPrejuizo: balancoAtual, // Mesmo valor para simplicidade
+          projecaoLucro,
+          totalInvestimentos,
+          totalRetiradas,
+          totalPerdas,
+          totalVendas
+        }
+      };
+    } catch (error) {
+      console.error('Erro ao calcular dashboard do caixa:', error);
+      return { sucesso: false, erro: 'Erro interno' };
     }
   }
 

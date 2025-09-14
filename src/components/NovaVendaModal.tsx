@@ -76,7 +76,7 @@ export default function NovaVendaModal({ open, onOpenChange }: NovaVendaModalPro
   // ====================================================================
   const { actions, produtos } = useEstoque();
   const { clientes, carregarClientes, criarCliente, isLoading: carregandoClientes, error: erroClientes } = useClientes();
-  const { showToast } = useToast();
+  const { addToast } = useToast();
   const { validateDiscount, validateRequiredField } = useValidationToasts();
 
   // ====================================================================
@@ -143,7 +143,7 @@ export default function NovaVendaModal({ open, onOpenChange }: NovaVendaModalPro
     
     if (itemExistente) {
       if (itemExistente.quantidade >= produto.quantidade) {
-        showToast('Quantidade indisponível em estoque', 'error');
+        addToast({ type: 'error', title: 'Quantidade indisponível em estoque' });
         return;
       }
       
@@ -162,7 +162,7 @@ export default function NovaVendaModal({ open, onOpenChange }: NovaVendaModalPro
       };
       setCarrinho(prev => [...prev, novoItem]);
     }
-  }, [produtos, carrinho, showToast]);
+  }, [produtos, carrinho, addToast]);
 
   const removerDoCarrinho = useCallback((produtoId: string) => {
     setCarrinho(prev => prev.filter(item => item.produtoId !== produtoId));
@@ -176,7 +176,7 @@ export default function NovaVendaModal({ open, onOpenChange }: NovaVendaModalPro
 
     const produto = produtos.find(p => p.id === produtoId);
     if (!produto || novaQuantidade > produto.quantidade) {
-      showToast('Quantidade indisponível em estoque', 'error');
+      addToast({ type: 'error', title: 'Quantidade indisponível em estoque' });
       return;
     }
 
@@ -185,14 +185,14 @@ export default function NovaVendaModal({ open, onOpenChange }: NovaVendaModalPro
         ? { ...item, quantidade: novaQuantidade, subtotal: novaQuantidade * item.preco }
         : item
     ));
-  }, [produtos, showToast, removerDoCarrinho]);
+  }, [produtos, addToast, removerDoCarrinho]);
 
   // ====================================================================
   // FUNÇÕES DE GERENCIAMENTO DE CLIENTES
   // ====================================================================
   const criarNovoCliente = useCallback(async () => {
     if (!novoCliente.nome.trim()) {
-      showToast('Nome do cliente é obrigatório', 'error');
+      addToast({ type: 'error', title: 'Nome do cliente é obrigatório' });
       return;
     }
 
@@ -208,16 +208,16 @@ export default function NovaVendaModal({ open, onOpenChange }: NovaVendaModalPro
         setForm(prev => ({ ...prev, clienteSelecionado: clienteCriado }));
         setShowClienteForm(false);
         setNovoCliente({ nome: '', telefone: '', email: '' });
-        showToast('Cliente criado com sucesso!', 'success');
+        addToast({ type: 'success', title: 'Cliente criado com sucesso!' });
       } else {
-        showToast('Erro ao criar cliente', 'error');
+        addToast({ type: 'error', title: 'Erro ao criar cliente' });
       }
     } catch (error) {
-      showToast('Erro ao criar cliente', 'error');
+      addToast({ type: 'error', title: 'Erro ao criar cliente' });
     } finally {
       setIsCreatingClient(false);
     }
-  }, [novoCliente, showToast, criarCliente]);
+  }, [novoCliente, addToast, criarCliente]);
 
   // ====================================================================
   // VALIDAÇÃO E FINALIZAÇÃO
@@ -243,35 +243,60 @@ export default function NovaVendaModal({ open, onOpenChange }: NovaVendaModalPro
 
   const finalizarVenda = useCallback(async () => {
     if (!validarFormulario()) {
-      showToast('Preencha todos os campos obrigatórios', 'error');
+      addToast({ type: 'error', title: 'Preencha todos os campos obrigatórios' });
       return;
     }
 
     setIsLoading(true);
     try {
-      const vendaData = {
-        cliente_id: form.clienteSelecionado!.id,
-        cliente_nome: form.clienteSelecionado!.nome,
-        total_bruto: totalCarrinho,
-        desconto: desconto,
-        total_liquido: totalFinal,
-        forma_pagamento: form.formaPagamento,
-        observacoes: form.observacoes || null,
-        produtos: carrinho,
-        data_venda: new Date().toISOString()
-      };
+      // Para cada item no carrinho, criar uma venda separada
+      // Isso mantém compatibilidade com o sistema existente
+      for (const item of carrinho) {
+        const produto = produtos.find(p => p.id === item.produtoId);
+        if (!produto) continue;
 
-      await actions.adicionarVenda(vendaData);
+        const vendaData = {
+          produtoId: item.produtoId,
+          nomeProduto: item.produto,
+          quantidade: item.quantidade,
+          precoUnitario: item.preco,
+          precoTotal: item.subtotal,
+          vendedor: 'Venda Direta',
+          categoria: produto.categoria || 'Produto',
+          formaPagamento: form.formaPagamento as any,
+          desconto: 0, // Desconto pode ser aplicado por item no futuro
+          data: new Date().toISOString(),
+          observacoes: form.observacoes || undefined,
+          cliente: form.clienteSelecionado!.nome,
+          cliente_id: form.clienteSelecionado!.id
+        };
+
+        await actions.adicionarVenda(vendaData);
+      }
       
-      showToast('Venda registrada com sucesso!', 'success');
-      handleClose();
+      addToast({ type: 'success', title: 'Venda registrada com sucesso!' });
+      
+      // Resetar formulário
+      setForm({
+        clienteSelecionado: null,
+        formaPagamento: '',
+        observacoes: '',
+        desconto: 0
+      });
+      setCarrinho([]);
+      setSearchCliente('');
+      setSearchProduto('');
+      setShowClienteForm(false);
+      setNovoCliente({ nome: '', telefone: '', email: '' });
+      setErrors({});
+      onOpenChange(false);
     } catch (error) {
       console.error('Erro ao finalizar venda:', error);
-      showToast('Erro ao registrar venda', 'error');
+      addToast({ type: 'error', title: 'Erro ao registrar venda' });
     } finally {
       setIsLoading(false);
     }
-  }, [validarFormulario, form, totalCarrinho, desconto, totalFinal, carrinho, actions, showToast]);
+  }, [validarFormulario, form, carrinho, produtos, actions, addToast, setForm, setCarrinho, setSearchCliente, setSearchProduto, setShowClienteForm, setNovoCliente, setErrors, onOpenChange]);
 
   // ====================================================================
   // FUNÇÕES DE CONTROLE DO MODAL

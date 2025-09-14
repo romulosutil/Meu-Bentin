@@ -65,6 +65,7 @@ export function ModalBase({
         style={{ maxHeight: '90vh', overflow: 'hidden' }}
         onPointerDownOutside={allowCloseOnOutsideClick ? undefined : (e) => e.preventDefault()}
         onEscapeKeyDown={allowCloseOnOutsideClick ? undefined : (e) => e.preventDefault()}
+        aria-describedby={description ? undefined : "modal-description"}
       >
         <DialogHeader className="modal-header pb-4 border-b border-border/40 px-6 pt-6" style={{ flexShrink: 0 }}>
           <div className="flex items-center justify-between">
@@ -78,11 +79,12 @@ export function ModalBase({
                 <DialogTitle className="text-xl font-semibold">
                   {title}
                 </DialogTitle>
-                {description && (
-                  <DialogDescription className="text-base mt-1">
-                    {description}
-                  </DialogDescription>
-                )}
+                <DialogDescription 
+                  id="modal-description" 
+                  className={description ? "text-base mt-1" : "sr-only"}
+                >
+                  {description || `Modal: ${title}`}
+                </DialogDescription>
               </div>
             </div>
             
